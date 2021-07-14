@@ -1,6 +1,6 @@
 import logging
 import click
-from datasets import load_dataset, load_from_disk
+from datasets import load_dataset
 from transformers import RobertaTokenizerFast
 from .util import zip_dir
 
@@ -37,7 +37,10 @@ def tokenize_dataset(file_path, out_path, file_type, delimiter, column_names, to
     tokenizer = init_tokenizer(tokenizer_name)
 
     logger.info('Loading dataset')
-    dataset = load_dataset(file_type, data_files=file_path, column_names=column_names, delimiter=delimiter)
+    if file_type == 'csv':
+        dataset = load_dataset(file_type, data_files=file_path, column_names=column_names, delimiter=delimiter)
+    else:
+        dataset = load_dataset(file_type, data_files=file_path, column_names=column_names)
 
     logger.info('Tokenizing dataset')
     encoded_dataset = dataset.map(
