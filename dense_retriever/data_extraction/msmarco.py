@@ -16,6 +16,13 @@ c_handler.setFormatter(f_format)
 logger.addHandler(c_handler)
 
 
+def extract_sample_text(sample):
+    if sample['text'] is None:
+        sample['text'] = ''
+    text = sample['url'] + '<sep>' + sample['title'] + '<sep>' + sample['text']
+    return {'doc_id': sample['doc_id'], 'text': text}
+
+
 def convert_tsv_to_ndjson(in_file_path, out_file_path, fieldnames, sample_size=None):
     if os.path.exists(out_file_path):
         os.remove(out_file_path)
@@ -29,7 +36,7 @@ def convert_tsv_to_ndjson(in_file_path, out_file_path, fieldnames, sample_size=N
             for i, line in tqdm(enumerate(reader)):
                 if sample_size is not None and i > sample_size:
                     break
-                outfile.write(json.dumps(line) + '\n')
+                outfile.write(json.dumps(extract_sample_text(line)) + '\n')
 
 
 @click.command()
