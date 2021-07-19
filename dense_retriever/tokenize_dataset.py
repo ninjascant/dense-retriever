@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 import logging
 import click
 from datasets import load_dataset
@@ -24,23 +26,12 @@ def init_tokenizer(tokenizer_name):
     return tokenizer
 
 
-@click.command()
-@click.argument('file_path', type=str)
-@click.argument('out_path', type=str)
-@click.option('-f', '--file_type', type=str, default='csv')
-@click.option('-d', '--delimiter', type=str, default=',')
-@click.option('-c', '--column-names', default=None, type=str)
-@click.option('-t', '--tokenizer-name', default='roberta', type=str)
-@click.option('-z', '--zip-path', type=str, default=None)
-def tokenize_dataset(file_path, out_path, file_type, delimiter, column_names, tokenizer_name, zip_path):
-    logger.info('Loading tokenizer')
-    tokenizer = init_tokenizer(tokenizer_name)
-
+def tokenize_file(file_path, file_type, out_path, zip_path, tokenizer, column_names, delimiter):
     logger.info('Loading dataset')
     if file_type == 'csv':
         dataset = load_dataset(file_type, data_files=file_path, column_names=column_names, delimiter=delimiter)
     else:
-        dataset = load_dataset(file_type, data_files=file_path, column_names=column_names)
+        dataset = load_dataset(file_type, data_files=file_path)
 
     logger.info('Tokenizing dataset')
     encoded_dataset = dataset.map(
@@ -55,3 +46,39 @@ def tokenize_dataset(file_path, out_path, file_type, delimiter, column_names, to
     if zip_path is not None:
         logging.info('Zipping dataset')
         zip_dir(out_path, zip_path)
+
+
+def tokenize_dir(dir_path, out_path, zip_path, tokenizer, file_type, column_names, delimiter):
+    files = sorted(os.listdir(dir_path))
+    for file in files:
+        file_name = Path(file).stem
+        file_input_path = os.path.join(dir_path, file)
+        file_out_path = os.path.join(out_path, file_name)
+        file_zip_path = os.path.join(zip_path, file_name + '.tar.gz')
+        tokenize_file(
+            file_input_path,
+            file_type,
+            file_out_path,
+            file_zip_path,
+            tokenizer,
+            column_names,
+            delimiter
+        )
+
+
+@click.command()
+@click.argument('input_path', type=str)
+@click.argument('out_path', type=str)
+@click.option('-f', '--file_type', type=str, default='csv')
+@click.option('-d', '--delimiter', type=str, default=',')
+@click.option('-c', '--column-names', default=None, type=str)
+@click.option('-t', '--tokenizer-name', default='roberta', type=str)
+@click.option('-z', '--zip-path', type=str, default=None)
+def tokenize_dataset(input_path, out_path, file_type, delimiter, column_names, tokenizer_name, zip_path):
+    logger.info('Loading tokenizer')
+    tokenizer = init_tokenizer(tokenizer_name)
+
+    if os.path.isdir(input_path):
+        tokenize_dir(input_path, out_path, zip_path, tokenizer, file_type, column_names, delimiter)
+    else:
+        tokenize_file(input_path, file_type, out_path, zip_path, tokenizer, column_names, delimiter)
