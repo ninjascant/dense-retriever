@@ -1,0 +1,53 @@
+{
+  "builder_name": "json",
+  "citation": "",
+  "config_name": "default",
+  "dataset_size": 32296,
+  "description": "",
+  "download_checksums": {
+    "tests/files/test_docs.json": {
+      "num_bytes": 32647,
+      "checksum": "a772adf6a3e72b8249d5f20609f4462ec2c9e3fed266b684ca20df91f36e236a"
+    }
+  },
+  "download_size": 32647,
+  "features": {
+    "doc_id": {
+      "dtype": "string",
+      "id": null,
+      "_type": "Value"
+    },
+    "embedding": {
+      "feature": {
+        "dtype": "float64",
+        "id": null,
+        "_type": "Value"
+      },
+      "length": -1,
+      "id": null,
+      "_type": "Sequence"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "post_processed": null,
+  "post_processing_size": null,
+  "size_in_bytes": 64943,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 32296,
+      "num_examples": 5,
+      "dataset_name": "json"
+    }
+  },
+  "supervised_keys": null,
+  "task_templates": null,
+  "version": {
+    "version_str": "0.0.0",
+    "description": null,
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}
