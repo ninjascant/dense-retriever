@@ -26,7 +26,7 @@ def init_tokenizer(tokenizer_name):
     return tokenizer
 
 
-def tokenize_file(file_path, file_type, out_path, zip_path, tokenizer, column_names, delimiter):
+def tokenize_file(file_path, file_type, out_path, zip_path, tokenizer, column_names, delimiter, padding):
     logger.info('Loading dataset')
     if file_type == 'csv':
         dataset = load_dataset(file_type, data_files=file_path, column_names=column_names, delimiter=delimiter)
@@ -35,7 +35,7 @@ def tokenize_file(file_path, file_type, out_path, zip_path, tokenizer, column_na
 
     logger.info('Tokenizing dataset')
     encoded_dataset = dataset.map(
-        lambda example: tokenizer(example['text'], max_length=512, truncation=True, padding='max_length'),
+        lambda example: tokenizer(example['text'], max_length=512, truncation=True, padding=padding),
         batched=True,
         batch_size=10_000,
     )
@@ -48,7 +48,7 @@ def tokenize_file(file_path, file_type, out_path, zip_path, tokenizer, column_na
         zip_dir(out_path, zip_path)
 
 
-def tokenize_dir(dir_path, out_path, zip_path, tokenizer, file_type, column_names, delimiter):
+def tokenize_dir(dir_path, out_path, zip_path, tokenizer, file_type, column_names, delimiter, padding):
     files = sorted(os.listdir(dir_path))
     for file in files:
         file_name = Path(file).stem
@@ -62,7 +62,8 @@ def tokenize_dir(dir_path, out_path, zip_path, tokenizer, file_type, column_name
             file_zip_path,
             tokenizer,
             column_names,
-            delimiter
+            delimiter,
+            padding
         )
 
 
@@ -74,11 +75,12 @@ def tokenize_dir(dir_path, out_path, zip_path, tokenizer, file_type, column_name
 @click.option('-c', '--column-names', default=None, type=str)
 @click.option('-t', '--tokenizer-name', default='roberta', type=str)
 @click.option('-z', '--zip-path', type=str, default=None)
-def tokenize_dataset(input_path, out_path, file_type, delimiter, column_names, tokenizer_name, zip_path):
+@click.option('-p', '--padding', type=str, default='max_length')
+def tokenize_dataset(input_path, out_path, file_type, delimiter, column_names, tokenizer_name, zip_path, padding):
     logger.info('Loading tokenizer')
     tokenizer = init_tokenizer(tokenizer_name)
 
     if os.path.isdir(input_path):
-        tokenize_dir(input_path, out_path, zip_path, tokenizer, file_type, column_names, delimiter)
+        tokenize_dir(input_path, out_path, zip_path, tokenizer, file_type, column_names, delimiter, padding)
     else:
-        tokenize_file(input_path, file_type, out_path, zip_path, tokenizer, column_names, delimiter)
+        tokenize_file(input_path, file_type, out_path, zip_path, tokenizer, column_names, delimiter, padding)
