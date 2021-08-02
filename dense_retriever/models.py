@@ -1,8 +1,7 @@
-from dataclasses import dataclass
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import RobertaTokenizer, RobertaConfig, RobertaForSequenceClassification
+from transformers import RobertaForSequenceClassification
 
 
 class EmbeddingMixin:
@@ -15,6 +14,7 @@ class EmbeddingMixin:
             self.use_mean = False
         else:
             self.use_mean = model_argobj.use_mean
+        print("Using mean:", self.use_mean)
 
     def _init_weights(self, module):
         """ Initialize the weights """
@@ -77,30 +77,26 @@ class RobertaDot_NLL_LN(NLL, RobertaForSequenceClassification):
     def __init__(self, config, model_argobj=None):
         NLL.__init__(self, model_argobj)
         RobertaForSequenceClassification.__init__(self, config)
+        self.embeddingHead = nn.Linear(config.hidden_size, 768)
+        self.norm = nn.LayerNorm(768)
+        self.apply(self._init_weights)
 
-    def body_emb(self, input_ids, attention_mask):
-        outputs = self.roberta(
+    def query_emb(self, input_ids, attention_mask):
+        outputs1 = self.roberta(
             input_ids=input_ids,
             attention_mask=attention_mask,
             return_dict=False
         )
-        full_emb = self.masked_mean_or_first(outputs, attention_mask)
-        return full_emb
+        full_emb = self.masked_mean_or_first(outputs1, attention_mask)
+        query1 = self.norm(self.embeddingHead(full_emb))
+        return query1
+
+    def body_emb(self, input_ids, attention_mask):
+        return self.query_emb(input_ids, attention_mask)
 
 
-MODELS = {
-    'rdot_nll': RobertaDot_NLL_LN,
-}
-
-
-def load_model(model_name, model_path):
-    label_list = ["0", "1"]
-    num_labels = len(label_list)
-    model = MODELS[model_name].from_pretrained(
-        model_path,
-        num_labels=num_labels,
-        finetuning_task="MSMarco",
-        cache_dir=None,
+def load_model(model_path):
+    model = RobertaDot_NLL_LN.from_pretrained(
+        model_path
     )
     return model
-
