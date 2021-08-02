@@ -1,4 +1,7 @@
 import logging
+import shutil
+import os
+import json
 import click
 from tqdm.auto import tqdm
 import numpy as np
@@ -66,16 +69,26 @@ def prepare_dataloader(dataset, batch_size):
     return torch.utils.data.DataLoader(dataset['train'], batch_size=batch_size, shuffle=False)
 
 
-def post_process_dataset(dataset, embedding_matrix, torch_cols):
-    dataset = dataset.remove_columns(torch_cols)
-    dataset.set_format('numpy')
+def extract_ids(dataset):
+    ids = dataset['train']['doc_id']
+    return ids
 
-    def set_embeddings(row, idx):
-        row['embedding'] = embedding_matrix[idx]
-        return row
 
-    dataset = dataset.map(set_embeddings, with_indices=True)
-    return dataset
+def remove_dir_if_exists(dir_path):
+    try:
+        shutil.rmtree(dir_path)
+    except FileNotFoundError:
+        pass
+
+
+def save_inference_results(embeddings, ids, out_path, overwrite):
+    if overwrite:
+        remove_dir_if_exists(out_path)
+        os.mkdir(out_path)
+
+    np.save(os.path.join(out_path, 'embeddings.npy'), embeddings)
+    with open(os.path.join(out_path, 'ids.json'), 'w') as outfile:
+        json.dump(ids, outfile, indent=2)
 
 
 def _run_inference(
@@ -88,7 +101,8 @@ def _run_inference(
         show_progress,
         print_progress_at,
         zip_path,
-        device):
+        device,
+        overwrite):
     columns = columns.split(',')
 
     inference_runner = InferenceRunner(model_name, model_path, device)
@@ -97,12 +111,9 @@ def _run_inference(
     dataloader = prepare_dataloader(dataset, batch_size)
 
     embeddings = inference_runner.transform(dataloader, show_progress, print_progress_at)
-    dataset = post_process_dataset(dataset, embeddings, columns)
+    doc_ids = extract_ids(dataset)
 
-    logger.info('Post-processing dataset')
-
-    logger.info('Saving embedding dataset')
-    dataset.save_to_disk(out_path)
+    save_inference_results(embeddings, doc_ids, out_path, overwrite)
 
     if zip_path is not None:
         logging.info('Zipping dataset')
@@ -120,6 +131,7 @@ def _run_inference(
 @click.option('-p', '--print-progress-at', type=int, default=None)
 @click.option('-z', '--zip-path', type=str, default=None)
 @click.option('-d', '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
+@click.option('-o', '--overwrite', is_flag=True)
 def run_inference(
         dataset_path,
         model_name,
@@ -130,7 +142,8 @@ def run_inference(
         show_progress,
         print_progress_at,
         zip_path,
-        device):
+        device,
+        overwrite):
     _run_inference(
         dataset_path,
         model_name,
@@ -141,5 +154,6 @@ def run_inference(
         show_progress,
         print_progress_at,
         zip_path,
-        device
+        device,
+        overwrite
     )

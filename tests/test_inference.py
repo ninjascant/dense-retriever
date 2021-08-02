@@ -1,8 +1,6 @@
-from pathlib import Path
-import numpy as np
+import os
 import torch
-from dense_retriever.inference import prepare_dataset, prepare_dataloader, post_process_dataset, InferenceRunner, \
-    _run_inference
+from dense_retriever.inference import prepare_dataset, _run_inference
 
 
 def test_prepare_dataset():
@@ -14,20 +12,8 @@ def test_prepare_dataset():
     assert list(prepared_dataset.keys()) == ['train']
 
 
-def test_post_process_dataset():
-    test_runner = InferenceRunner('rdot_nll', '../ance_model', 'cpu')
-    dataset = prepare_dataset('tests/files/test_tokenized_dataset', ['input_ids', 'attention_mask'])
-    dataloader = prepare_dataloader(dataset, 32)
-    embeddings = test_runner.transform(dataloader)
-    post_processed_dataset = post_process_dataset(dataset, embeddings, ['input_ids', 'attention_mask'])
-
-    assert sorted(post_processed_dataset['train'].column_names) == ['doc_id', 'embedding']
-    assert type(post_processed_dataset['train'][0]['embedding']) == np.ndarray
-
-
 def test_run_inference_without_zipping():
-    test_embed_dir = Path('tests/files/test_embedding_dataset')
-    test_embed_dir.unlink(missing_ok=True)
+    test_embed_dir = 'tests/files/test_embedding_dataset'
 
     _run_inference(
         'tests/files/test_tokenized_dataset',
@@ -39,8 +25,9 @@ def test_run_inference_without_zipping():
         False,
         None,
         None,
-        'cpu'
+        'cpu',
+        overwrite=True
     )
 
-    assert test_embed_dir.is_dir()
-
+    assert os.path.isdir(test_embed_dir)
+    assert sorted(os.listdir(test_embed_dir)) == ['embeddings.npy', 'ids.json']
