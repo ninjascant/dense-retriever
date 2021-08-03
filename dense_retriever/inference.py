@@ -112,7 +112,6 @@ def _run_inference(
     dataloader = prepare_dataloader(dataset, batch_size)
 
     embeddings = inference_runner.transform(dataloader, show_progress, print_progress_at)
-    print(embeddings[0][:20])
     doc_ids = extract_ids(dataset)
 
     save_inference_results(embeddings, doc_ids, out_path, overwrite)
