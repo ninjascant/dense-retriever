@@ -71,7 +71,7 @@ def prepare_dataloader(dataset, batch_size):
 
 
 def extract_ids(dataset):
-    ids = dataset['train']['doc_id']
+    ids = dataset['train']['id']
     return ids
 
 
