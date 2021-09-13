@@ -31,7 +31,7 @@ class InferenceRunner:
 
         logger.info('Loading model')
 
-        self.model = load_model(model_dir_path)
+        self.model = load_model(model_name, model_dir_path)
         self.model.to(self.device)
 
     def transform(self, dataloader, show_progress=False, print_progress_at=None):
@@ -46,7 +46,7 @@ class InferenceRunner:
         with torch.no_grad():
 
             for i, batch in batch_iterator:
-                embeddings = self.model.body_emb(
+                embeddings = self.model.get_embed(
                     batch['input_ids'].to(self.device),
                     batch['attention_mask'].to(self.device)
                 )

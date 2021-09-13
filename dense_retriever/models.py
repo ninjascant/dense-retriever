@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import RobertaForSequenceClassification
+from transformers import RobertaForSequenceClassification, AutoModel
 
 
 class EmbeddingMixin:
@@ -95,8 +95,59 @@ class RobertaDot_NLL_LN(NLL, RobertaForSequenceClassification):
         return self.query_emb(input_ids, attention_mask)
 
 
-def load_model(model_path):
-    model = RobertaDot_NLL_LN.from_pretrained(
-        model_path
-    )
+class BertDot(nn.Module):
+    def __init__(self, model_name, num_labels, hidden_size, hidden_dropout_prob=0.8):
+        super(BertDot, self).__init__()
+
+        self.transformer = AutoModel.from_pretrained(model_name)
+        self.dropout = nn.Dropout(hidden_dropout_prob)
+        self.classifier = nn.Linear(hidden_size, num_labels)
+
+    def get_embed(self, input_ids, attention_mask):
+        outputs = self.transformer(input_ids,
+                                   attention_mask=attention_mask)
+
+        last_hidden_state = outputs[0]
+        mean_pool = torch.mean(last_hidden_state, 1)
+        return mean_pool
+
+    def forward(self, query_input_ids, doc_input_ids, query_attn_mask, doc_attn_mask):
+        query_embed = self.get_embed(query_input_ids, query_attn_mask)
+        doc_embed = self.get_embed(doc_input_ids, doc_attn_mask)
+
+        logits = torch.bmm(
+            doc_embed.unsqueeze(1),
+            query_embed.unsqueeze(2)).squeeze(-1).squeeze(-1)
+        return logits
+
+
+class BertDotEmbed(nn.Module):
+    def __init__(self, model_path):
+        super(BertDotEmbed, self).__init__()
+        self.transformer = AutoModel.from_pretrained(model_path)
+
+    def get_embed(self, input_ids, attention_mask):
+        outputs = self.transformer(input_ids,
+                                   attention_mask=attention_mask)
+
+        last_hidden_state = outputs[0]
+        mean_pool = torch.mean(last_hidden_state, 1)
+        return mean_pool
+
+
+models = {
+    'ance': RobertaDot_NLL_LN,
+    'tinybert': BertDotEmbed
+}
+
+
+def load_model(model_name, model_path):
+    if model_name == 'ance':
+        model = RobertaDot_NLL_LN.from_pretrained(
+            model_path
+        )
+    elif model_name == 'tinybert':
+        model = BertDotEmbed(model_path)
+    else:
+        raise NotImplementedError
     return model
