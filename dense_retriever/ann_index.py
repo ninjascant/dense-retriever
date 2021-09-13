@@ -5,7 +5,6 @@ from tqdm.auto import tqdm
 import click
 import numpy as np
 import pandas as pd
-import faiss
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -36,6 +35,7 @@ def load_embeddings_to_index(input_dir, index):
 @click.argument('input_dir', type=str)
 @click.argument('out_dir', type=str)
 def build_index(input_dir, out_dir):
+    import faiss
     logger.info('Initializing index')
     index = faiss.index_factory(768, 'IDMap,Flat', faiss.METRIC_INNER_PRODUCT)
     logger.info('Adding embeddings to index')
@@ -44,15 +44,39 @@ def build_index(input_dir, out_dir):
     faiss.write_index(index, os.path.join(out_dir, 'index.ann'))
 
 
+def load_index(index_path):
+    import faiss
+    logger.info('Loading index')
+    index = faiss.read_index(index_path)
+    logger.info('Loaded index')
+    return index
+
+
+def load_query_embeddings(query_embed_path):
+    query_embeds = np.load(query_embed_path).astype(np.float32)
+    return query_embeds
+
+
+def run_batch_search(index_path, query_embed_path, out_path, top_n=100):
+    index = load_index(index_path)
+    query_embeds = load_query_embeddings(query_embed_path)
+
+    logger.info('Starting search')
+    _, res_idx = index.search(query_embeds, 100)
+    logger.info('Finished search')
+    # with open(out_path, 'w') as outfile:
+    #     json.dump(res_idx, outfile, indent=2)
+    np.save(out_path, res_idx)
+    return res_idx
+
+
 @click.command()
 @click.argument('index_path', type=str)
 @click.argument('query_embed_path', type=str)
 @click.argument('qrel_path', type=str)
-def validate(index_path, query_embed_path, qrel_path):
-    logger.info('Loading index')
-    index = faiss.read_index(index_path)
-
-    query_embeds = np.load(query_embed_path).astype(np.float32)
+@click.argument('out_path', type=str)
+def validate(index_path, query_embed_path, qrel_path, out_path):
+    res_ids = run_batch_search(index_path, query_embed_path, out_path)
 
     qrels = pd.read_csv(qrel_path, sep=' ', header=None)
     qrels.columns = ['qid', 'none1', 'doc_id', 'none2']
@@ -61,11 +85,9 @@ def validate(index_path, query_embed_path, qrel_path):
     queries = pd.read_csv('../ir_datasets/msmarco_docs/raw/dev-queries.tsv', sep='\t', header=None)
     queries.columns = ['qid', 'text']
 
-    logger.info('Starting search')
-    _, idx = index.search(query_embeds, 100)
     logger.info('Calculating MRR@100')
     ranks = []
-    for i, res in enumerate(idx):
+    for i, res in enumerate(res_ids):
         res = [item for item in res]
         qid = queries.iloc[i]['qid']
         true_value = int(qrels.loc[qrels['qid'] == qid]['doc_id'].values[0][1:])
@@ -76,3 +98,12 @@ def validate(index_path, query_embed_path, qrel_path):
         ranks.append(rank)
     mrr = np.mean(ranks)
     print(mrr)
+
+
+@click.command()
+@click.argument('index_path', type=str)
+@click.argument('query_embed_path', type=str)
+@click.argument('out_path', type=str)
+@click.option('-t', '--top-n', type=int, default=20)
+def get_train_samples(index_path, query_embed_path, out_path, top_n):
+    run_batch_search(index_path, query_embed_path, out_path, top_n=top_n)
