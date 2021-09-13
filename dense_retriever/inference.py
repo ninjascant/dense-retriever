@@ -70,8 +70,8 @@ def prepare_dataloader(dataset, batch_size):
     return torch.utils.data.DataLoader(dataset['train'], batch_size=batch_size, shuffle=False)
 
 
-def extract_ids(dataset):
-    ids = dataset['train']['doc_id']
+def extract_ids(dataset, id_column):
+    ids = dataset['train'][id_column]
     return ids
 
 
@@ -103,7 +103,9 @@ def _run_inference(
         print_progress_at,
         zip_path,
         device,
-        overwrite):
+        overwrite,
+        id_column
+):
     columns = columns.split(',')
 
     inference_runner = InferenceRunner(model_name, model_path, device)
@@ -112,7 +114,7 @@ def _run_inference(
     dataloader = prepare_dataloader(dataset, batch_size)
 
     embeddings = inference_runner.transform(dataloader, show_progress, print_progress_at)
-    doc_ids = extract_ids(dataset)
+    doc_ids = extract_ids(dataset, id_column)
 
     save_inference_results(embeddings, doc_ids, out_path, overwrite)
 
@@ -133,6 +135,7 @@ def _run_inference(
 @click.option('-z', '--zip-path', type=str, default=None)
 @click.option('-d', '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
 @click.option('-o', '--overwrite', is_flag=True)
+@click.option('-i', '--id-column', type=str, default='doc_id')
 def run_inference(
         dataset_path,
         model_name,
@@ -144,7 +147,9 @@ def run_inference(
         print_progress_at,
         zip_path,
         device,
-        overwrite):
+        overwrite,
+        id_column
+):
     _run_inference(
         dataset_path,
         model_name,
@@ -156,5 +161,6 @@ def run_inference(
         print_progress_at,
         zip_path,
         device,
-        overwrite
+        overwrite,
+        id_column
     )
