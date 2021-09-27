@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import RobertaForSequenceClassification, AutoModel
+from transformers import RobertaForSequenceClassification, AutoModel, PreTrainedModel, BertModel, BertPreTrainedModel
+from transformers.modeling_outputs import SequenceClassifierOutput
 
 
 class EmbeddingMixin:
@@ -96,40 +97,43 @@ class RobertaDot_NLL_LN(NLL, RobertaForSequenceClassification):
 
 
 class BertDot(nn.Module):
-    def __init__(self, model_name, num_labels, hidden_size, hidden_dropout_prob=0.8):
+    def __init__(self, model_name):
         super(BertDot, self).__init__()
 
         self.transformer = AutoModel.from_pretrained(model_name)
-        self.dropout = nn.Dropout(hidden_dropout_prob)
-        self.classifier = nn.Linear(hidden_size, num_labels)
+        self.dropout = nn.Dropout(0.8)
 
     def get_embed(self, input_ids, attention_mask):
-        outputs = self.transformer(input_ids,
-                                   attention_mask=attention_mask)
+        outputs = self.transformer(input_ids, attention_mask=attention_mask)
 
         last_hidden_state = outputs[0]
         mean_pool = torch.mean(last_hidden_state, 1)
         return mean_pool
 
-    def forward(self, query_input_ids, doc_input_ids, query_attn_mask, doc_attn_mask):
-        query_embed = self.get_embed(query_input_ids, query_attn_mask)
-        doc_embed = self.get_embed(doc_input_ids, doc_attn_mask)
+    def forward(self, doc_input_ids, query_input_ids, doc_attention_mask, query_attention_mask, labels):
+        query_embed = self.get_embed(query_input_ids, query_attention_mask)
+        doc_embed = self.get_embed(doc_input_ids, doc_attention_mask)
 
         logits = torch.bmm(
             doc_embed.unsqueeze(1),
             query_embed.unsqueeze(2)).squeeze(-1).squeeze(-1)
-        return logits
+
+        if labels is not None:
+            loss_fn = nn.BCEWithLogitsLoss()
+            labels = labels.float()
+            loss = loss_fn(logits, labels)
+            return SequenceClassifierOutput(logits=logits, loss=loss)
+        else:
+            return SequenceClassifierOutput(logits=logits)
 
 
-class BertDotEmbed(nn.Module):
-    def __init__(self, model_path):
-        super(BertDotEmbed, self).__init__()
-        self.transformer = AutoModel.from_pretrained(model_path)
+class IRBert(PreTrainedModel):
+    def __init__(self, config):
+        super(IRBert, self).__init__(config)
+        self.transformer = AutoModel.from_pretrained(config)
 
-    def get_embed(self, input_ids, attention_mask):
-        outputs = self.transformer(input_ids,
-                                   attention_mask=attention_mask)
-
+    def forward(self, input_ids, attention_mask):
+        outputs = self.transformer(input_ids, attention_mask=attention_mask)
         last_hidden_state = outputs[0]
         mean_pool = torch.mean(last_hidden_state, 1)
         return mean_pool
@@ -137,7 +141,7 @@ class BertDotEmbed(nn.Module):
 
 models = {
     'ance': RobertaDot_NLL_LN,
-    'tinybert': BertDotEmbed
+    'tinybert': IRBert
 }
 
 

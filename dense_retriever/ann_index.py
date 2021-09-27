@@ -37,7 +37,7 @@ def load_embeddings_to_index(input_dir, index):
 def build_index(input_dir, out_dir):
     import faiss
     logger.info('Initializing index')
-    index = faiss.index_factory(768, 'IDMap,Flat', faiss.METRIC_INNER_PRODUCT)
+    index = faiss.index_factory(312, 'IDMap,Flat', faiss.METRIC_INNER_PRODUCT)
     logger.info('Adding embeddings to index')
     load_embeddings_to_index(input_dir, index)
     logger.info('Saving index')
@@ -64,8 +64,6 @@ def run_batch_search(index_path, query_embed_path, out_path, top_n=100):
     logger.info('Starting search')
     _, res_idx = index.search(query_embeds, 100)
     logger.info('Finished search')
-    # with open(out_path, 'w') as outfile:
-    #     json.dump(res_idx, outfile, indent=2)
     np.save(out_path, res_idx)
     return res_idx
 

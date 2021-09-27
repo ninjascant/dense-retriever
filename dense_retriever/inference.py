@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from datasets import load_from_disk
 from .models import load_model
-from .util import zip_dir
+from .utils.file_utils import zip_dir
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -46,7 +46,7 @@ class InferenceRunner:
         with torch.no_grad():
 
             for i, batch in batch_iterator:
-                embeddings = self.model.get_embed(
+                embeddings = self.model(
                     batch['input_ids'].to(self.device),
                     batch['attention_mask'].to(self.device)
                 )
