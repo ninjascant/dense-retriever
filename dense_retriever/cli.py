@@ -1,21 +1,77 @@
 import click
-from .preprocessing import tokenize_dataset
+from .preprocessing import tokenize_train_dataset, get_train_set_splits, construct_train_set, get_similar_docs
 from .data_extraction import extract
 from .inference import run_inference
 from .ann_index import build_index, validate, get_train_samples
 from .train import train_model
 
 
-@click.command()
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
+@click.argument('index_file', type=str)
+@click.argument('query_embed_dir', type=str)
+@click.argument('out_file', type=str)
+@click.option('-t', '--top-n', type=int, default=100)
+def get_query_similar_docs(index_file, query_embed_dir, out_file, top_n):
+    get_similar_docs(
+        index_file=index_file,
+        query_embed_dir=query_embed_dir,
+        out_file=out_file,
+        top_n=top_n
+    )
+
+
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
+@click.argument('doc_file', type=str)
+@click.argument('ann_res_file', type=str)
+@click.argument('query_file', type=str)
+@click.argument('out_file', type=str)
+@click.option('-t', '--top-n', type=int, default=100)
+def construct_train_dataset(doc_file, ann_res_file, query_file, out_file, top_n):
+    construct_train_set(
+        doc_file=doc_file,
+        ann_res_file=ann_res_file,
+        query_sample_file=query_file,
+        out_file=out_file,
+        top_n=top_n
+    )
+
+
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
+@click.argument('input_file', type=str)
+@click.argument('out_dir', type=str)
+@click.option('-f', '--file-type', type=str, default='csv')
+@click.option('-t', '--test-size', type=float, default=0.3)
+@click.option('-s', '--sample-size', type=float, default=None)
+def get_train_splits(input_file, out_dir, file_type, test_size, sample_size):
+    get_train_set_splits(
+        input_file=input_file,
+        out_dir=out_dir,
+        file_type=file_type,
+        test_size=test_size,
+        sample_size=sample_size
+    )
+
+
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
 @click.argument('train_file_path', type=str)
 @click.argument('out_dir', type=str)
 @click.argument('model_name', type=str)
+@click.option('-f', '--file-type', type=str, default='csv')
 @click.option('-t', '--test-file-path', type=str, default=None)
 @click.option('-z', '--zip-path', type=str, default=None)
 @click.option('-m', '--max-length', type=int, default=512)
 @click.option('-p', '--padding', type=str, default='max_length')
-def tokenize_ir_dataset(train_file_path, out_dir, model_name, test_file_path, zip_path, max_length, padding):
-    tokenize_dataset(train_file_path, test_file_path, out_dir, model_name, zip_path, max_length, padding)
+def tokenize_train_data(train_file_path, out_dir, model_name, file_type, test_file_path, zip_path, max_length, padding):
+    tokenize_train_dataset(
+        train_file_path,
+        test_file_path,
+        out_dir,
+        model_name,
+        file_type,
+        zip_path,
+        max_length,
+        padding
+    )
 
 
 @click.group()
@@ -24,6 +80,12 @@ def run():
 
 
 run.add_command(extract, 'extract')
+
+run.add_command(get_query_similar_docs, 'get_query_similar_docs')
+run.add_command(construct_train_dataset, 'construct_train_dataset')
+run.add_command(get_train_splits, 'get_train_splits')
+run.add_command(tokenize_train_data, 'tokenize_train_data')
+
 run.add_command(run_inference, 'inference')
 run.add_command(build_index, 'build_index')
 run.add_command(validate, 'validate')

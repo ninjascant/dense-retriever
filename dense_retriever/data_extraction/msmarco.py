@@ -2,9 +2,12 @@ import sys
 import os
 import csv
 import json
+import pickle
 import logging
 import click
 from tqdm.auto import tqdm
+import pandas as pd
+from ..data_model import QuerySample
 from ..utils.file_utils import read_qrel_file
 
 csv.field_size_limit(sys.maxsize)
@@ -15,6 +18,27 @@ c_handler = logging.StreamHandler()
 f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 c_handler.setFormatter(f_format)
 logger.addHandler(c_handler)
+
+
+
+@click.command()
+@click.argument('query_file', type=str)
+@click.argument('qrel_file', type=str)
+@click.argument('out_file', type=str)
+def join_query_qrels(query_file, qrel_file, out_file):
+    queries = pd.read_csv(query_file, sep='\t', header=None)
+    queries.columns = ['qid', 'query']
+
+    qrels = pd.read_csv(qrel_file, sep=' ', header=None)
+    qrels.columns = ['qid', 'none', 'doc_id', 'none1']
+    qrels = qrels[['qid', 'doc_id']]
+
+    qrels = qrels.merge(queries, on='qid')
+
+    query_samples = [QuerySample(query=row['query'], query_id=row['qid'], positive_doc_id=row['doc_id'])
+                     for row in qrels.to_dict(orient='records')]
+    with open(out_file, 'wb') as f:
+        pickle.dump(query_samples, f)
 
 
 def truncate_text(sample, max_len):

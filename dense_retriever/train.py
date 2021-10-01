@@ -25,10 +25,16 @@ def _load_dataset(dataset_path):
     return dataset
 
 
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
+
+
 def compute_metrics(eval_pred):
     metric = load_metric("f1")
     logits, labels = eval_pred
-    predictions = np.argmax(logits, axis=-1)
+    predictions = softmax(logits)
     return metric.compute(predictions=predictions, references=labels)
 
 
