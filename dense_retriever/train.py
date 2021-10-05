@@ -59,7 +59,7 @@ def train_model(model_name, dataset_path, out_dir, batch_size, num_epochs, accum
         logging_steps=1000,
         evaluation_strategy='epoch',
         save_strategy='epoch',
-        output_dir=out_dir
+        output_dir='./tmp'
     )
 
     trainer = Trainer(
@@ -71,3 +71,4 @@ def train_model(model_name, dataset_path, out_dir, batch_size, num_epochs, accum
     )
 
     trainer.train()
+    trainer.model.transformer.save_pretrained(out_dir)
