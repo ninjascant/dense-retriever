@@ -1,21 +1,14 @@
-import logging
 import shutil
 import os
 import json
 import click
 from tqdm.auto import tqdm
+from loguru import logger
 import numpy as np
 import torch
 from datasets import load_from_disk
 from .models import load_model
 from .utils.file_utils import zip_dir
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-c_handler = logging.StreamHandler()
-f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-c_handler.setFormatter(f_format)
-logger.addHandler(c_handler)
 
 
 class InferenceRunner:
@@ -46,7 +39,7 @@ class InferenceRunner:
         with torch.no_grad():
 
             for i, batch in batch_iterator:
-                embeddings = self.model(
+                embeddings = self.model.get_embed(
                     batch['input_ids'].to(self.device),
                     batch['attention_mask'].to(self.device)
                 )
@@ -119,7 +112,7 @@ def _run_inference(
     save_inference_results(embeddings, doc_ids, out_path, overwrite)
 
     if zip_path is not None:
-        logging.info('Zipping dataset')
+        logger.info('Zipping dataset')
         zip_dir(out_path, zip_path)
 
 

@@ -126,22 +126,9 @@ class BertDot(nn.Module):
         else:
             return SequenceClassifierOutput(logits=logits)
 
-
-class IRBert(PreTrainedModel):
-    def __init__(self, config):
-        super(IRBert, self).__init__(config)
-        self.transformer = AutoModel.from_pretrained(config)
-
-    def forward(self, input_ids, attention_mask):
-        outputs = self.transformer(input_ids, attention_mask=attention_mask)
-        last_hidden_state = outputs[0]
-        mean_pool = torch.mean(last_hidden_state, 1)
-        return mean_pool
-
-
 models = {
     'ance': RobertaDot_NLL_LN,
-    'tinybert': IRBert
+    'tinybert': BertDot
 }
 
 
@@ -150,8 +137,8 @@ def load_model(model_name, model_path):
         model = RobertaDot_NLL_LN.from_pretrained(
             model_path
         )
-    elif model_name == 'tinybert':
-        model = BertDotEmbed(model_path)
+    elif model_name == 'bert-dot':
+        model = BertDot(model_path)
     else:
         raise NotImplementedError
     return model
