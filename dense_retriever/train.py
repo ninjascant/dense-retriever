@@ -45,7 +45,8 @@ def compute_metrics(eval_pred):
 @click.option('-b', '--batch_size', type=int, default=8)
 @click.option('-n', '--num_epochs', type=int, default=3)
 @click.option('-a', '--accum-steps', type=int, default=1)
-def train_model(model_name, dataset_path, out_dir, batch_size, num_epochs, accum_steps):
+@click.option('-s', '--save-strategy', type=str, default='no')
+def train_model(model_name, dataset_path, out_dir, batch_size, num_epochs, accum_steps, save_strategy):
 
     dataset = _load_dataset(dataset_path)
     model = BertDot(model_name)
@@ -58,7 +59,7 @@ def train_model(model_name, dataset_path, out_dir, batch_size, num_epochs, accum
         weight_decay=0.01,
         logging_steps=1000,
         evaluation_strategy='epoch',
-        save_strategy='epoch',
+        save_strategy=save_strategy,
         output_dir='./tmp'
     )
 
