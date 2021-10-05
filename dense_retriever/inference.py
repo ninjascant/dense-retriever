@@ -60,11 +60,11 @@ def prepare_dataset(dataset_path, torch_cols):
 
 
 def prepare_dataloader(dataset, batch_size):
-    return torch.utils.data.DataLoader(dataset['train'], batch_size=batch_size, shuffle=False)
+    return torch.utils.data.DataLoader(dataset['test'], batch_size=batch_size, shuffle=False)
 
 
 def extract_ids(dataset, id_column):
-    ids = dataset['train'][id_column]
+    ids = dataset['test'][id_column]
     return ids
 
 
