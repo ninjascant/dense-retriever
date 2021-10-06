@@ -80,6 +80,9 @@ def save_inference_results(embeddings, ids, out_path, overwrite):
         remove_dir_if_exists(out_path)
         os.mkdir(out_path)
 
+    if not os.path.exists(out_path):
+        os.mkdir(out_path)
+
     np.save(os.path.join(out_path, 'embeddings.npy'), embeddings)
     with open(os.path.join(out_path, 'ids.json'), 'w') as outfile:
         json.dump(ids, outfile, indent=2)
