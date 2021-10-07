@@ -1,3 +1,5 @@
+import json
+from tqdm.auto import tqdm
 from loguru import logger
 from datasets import load_dataset
 from transformers import AutoTokenizer
@@ -15,14 +17,15 @@ def _rename_torch_columns(dataset, column_name):
     return dataset
 
 
-def _encode_text_column(dataset, tokenizer, column_name, max_length, padding):
+def _encode_text_column(dataset, tokenizer, column_name, max_length, padding, rename_cols=True):
     encoded_dataset = dataset.map(
         lambda example: tokenizer(example[column_name], max_length=max_length, padding=padding, truncation=True),
         batched=True,
         batch_size=10_000
     )
     encoded_dataset = encoded_dataset.remove_columns(column_name)
-    encoded_dataset = _rename_torch_columns(encoded_dataset, column_name)
+    if rename_cols:
+        encoded_dataset = _rename_torch_columns(encoded_dataset, column_name)
     return encoded_dataset
 
 
@@ -47,7 +50,6 @@ def tokenize_train_dataset(
     logger.info('Tokenizing dataset')
     encoded_dataset = _encode_text_column(dataset, tokenizer, 'query', max_length, padding)
     encoded_dataset = _encode_text_column(encoded_dataset, tokenizer, 'doc', max_length, padding)
-    print(encoded_dataset.column_names)
 
     logger.info('Saving dataset')
     encoded_dataset.save_to_disk(out_path)
@@ -55,3 +57,45 @@ def tokenize_train_dataset(
     if zip_path is not None:
         logger.info('Zipping dataset')
         zip_dir(out_path, zip_path)
+
+
+def tokenize_test_dataset(
+        input_file,
+        out_dir,
+        model_name,
+        file_type,
+        zip_path,
+        max_length,
+        padding
+):
+    logger.info('Loading dataset')
+    dataset = load_dataset(file_type, data_files={'test': input_file})
+    tokenizer = init_tokenizer(model_name)
+
+    logger.info('Tokenizing dataset')
+    encoded_dataset = _encode_text_column(dataset, tokenizer, 'text', max_length, padding,
+                                          rename_cols=False)
+    print(encoded_dataset.column_names)
+
+    logger.info('Saving dataset')
+    encoded_dataset.save_to_disk(out_dir)
+
+    if zip_path is not None:
+        logger.info('Zipping dataset')
+        zip_dir(out_dir, zip_path)
+
+
+def truncate_text(text, max_words):
+    return ' '.join(text.split()[:max_words])
+
+
+def truncate_docs(
+    input_file,
+    out_file
+):
+    with open(out_file, 'a') as outfile:
+        with open(input_file) as file:
+            for line in tqdm(file.readlines()):
+                line_dict = json.loads(line)
+                line_dict['text'] = truncate_text(line_dict['text'], 550)
+                outfile.write(json.dumps(line_dict) + '\n')

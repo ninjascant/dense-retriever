@@ -1,8 +1,9 @@
 import click
-from .preprocessing import tokenize_train_dataset, get_train_set_splits, construct_train_set, get_similar_docs
+from .preprocessing import tokenize_train_dataset, tokenize_test_dataset, get_train_set_splits, \
+    construct_train_set, get_similar_docs, truncate_docs
 from .data_extraction import extract
 from .inference import run_inference
-from .ann_index import build_index, validate, get_train_samples
+from .ann_index import build_index, build_index_single_file, validate, get_train_samples
 from .train import train_model
 
 
@@ -74,6 +75,33 @@ def tokenize_train_data(train_file_path, out_dir, model_name, file_type, test_fi
     )
 
 
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
+@click.argument('input_file', type=str)
+@click.argument('out_dir', type=str)
+@click.argument('model_name', type=str)
+@click.option('-f', '--file-type', type=str, default='csv')
+@click.option('-z', '--zip-path', type=str, default=None)
+@click.option('-m', '--max-length', type=int, default=512)
+@click.option('-p', '--padding', type=str, default='max_length')
+def tokenize_test_data(input_file, out_dir, model_name, file_type, zip_path, max_length, padding):
+    tokenize_test_dataset(
+        input_file,
+        out_dir,
+        model_name,
+        file_type,
+        zip_path,
+        max_length,
+        padding
+    )
+
+
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
+@click.argument('input_file', type=str)
+@click.argument('out_file', type=str)
+def truncate(input_file, out_file):
+    truncate_docs(input_file, out_file)
+
+
 @click.group()
 def run():
     pass
@@ -85,9 +113,12 @@ run.add_command(get_query_similar_docs, 'get_query_similar_docs')
 run.add_command(construct_train_dataset, 'construct_train_dataset')
 run.add_command(get_train_splits, 'get_train_splits')
 run.add_command(tokenize_train_data, 'tokenize_train_data')
+run.add_command(tokenize_test_data, 'tokenize_test_data')
+run.add_command(truncate, 'truncate')
 
 run.add_command(run_inference, 'inference')
 run.add_command(build_index, 'build_index')
+run.add_command(build_index_single_file, 'build_index_single_file')
 run.add_command(validate, 'validate')
 run.add_command(get_train_samples, 'train_samples')
 run.add_command(train_model, 'train_model')
