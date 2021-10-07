@@ -19,7 +19,7 @@ def load_json_file(file_path):
         return json.load(json_file)
 
 
-def load_embeddings_to_index(input_dir, index):
+def load_embeddings_to_index_from_subdirs(input_dir, index):
     subdirs = [item for item in os.listdir(input_dir) if os.path.isdir(os.path.join(input_dir, item))]
     num_embed_subdirs = len(subdirs)
     for i in tqdm(range(num_embed_subdirs)):
@@ -31,6 +31,28 @@ def load_embeddings_to_index(input_dir, index):
     return index
 
 
+def load_embeddings_to_index(input_dir, index):
+    embeddings = np.load(os.path.join(input_dir, 'embeddings.npy')).astype(np.float32)
+    ids = load_json_file(os.path.join(input_dir, 'ids.json'))
+    ids = [int(doc_id[1:]) for doc_id in ids]
+    ids = np.array(ids).astype(np.int64)
+    index.add_with_ids(embeddings, ids)
+    return index
+
+
+@click.command()
+@click.argument('input_dir', type=str)
+@click.argument('out_file', type=str)
+def build_index_single_file(input_dir, out_file):
+    import faiss
+    logger.info('Initializing index')
+    index = faiss.index_factory(312, 'IDMap,Flat', faiss.METRIC_INNER_PRODUCT)
+    logger.info('Adding embeddings to index')
+    load_embeddings_to_index(input_dir, index)
+    logger.info('Saving index')
+    faiss.write_index(index, out_file)
+
+
 @click.command()
 @click.argument('input_dir', type=str)
 @click.argument('out_dir', type=str)
@@ -39,7 +61,7 @@ def build_index(input_dir, out_dir):
     logger.info('Initializing index')
     index = faiss.index_factory(312, 'IDMap,Flat', faiss.METRIC_INNER_PRODUCT)
     logger.info('Adding embeddings to index')
-    load_embeddings_to_index(input_dir, index)
+    load_embeddings_to_index_from_subdirs(input_dir, index)
     logger.info('Saving index')
     faiss.write_index(index, os.path.join(out_dir, 'index.ann'))
 
