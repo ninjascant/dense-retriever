@@ -195,7 +195,7 @@ def train_model_with_refresh(
                 model_dir=out_dir,
                 out_dir='model_outputs/query_embeddings',
                 device=device,
-                id_col='doc_id'
+                id_col='qid'
             )
 
             logger.info('Updating index')

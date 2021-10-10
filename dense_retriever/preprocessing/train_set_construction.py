@@ -117,14 +117,23 @@ def get_train_set_splits(input_file, out_dir, file_type, test_size=0.3, sample_s
         data = read_df_from_ndjson(input_file, sample_size)
 
     logger.info('Splitting data')
-    data = data[['query', 'doc', 'label']]
-    query_train, query_test, doc_train, doc_test, y_train, y_test = train_test_split(
-        data['query'].values,
-        data['doc'].values,
-        data['label'].values,
-        test_size=test_size,
-        random_state=42
-    )
+    if 'doc' in data.columns:
+        data = data[['query', 'doc', 'label']]
+        query_train, query_test, doc_train, doc_test, y_train, y_test = train_test_split(
+            data['query'].values,
+            data['doc'].values,
+            data['label'].values,
+            test_size=test_size,
+            random_state=42
+        )
+    else:
+        query_train, query_test, doc_train, doc_test, y_train, y_test = train_test_split(
+            data['query'].values,
+            data['doc_id'].values,
+            data['label'].values,
+            test_size=test_size,
+            random_state=42
+        )
 
     train_df = split_to_df(query_train, doc_train, y_train)
     test_df = split_to_df(query_test, doc_test, y_test)

@@ -2,6 +2,7 @@ import click
 from .preprocessing import tokenize_train_dataset, tokenize_test_dataset, get_train_set_splits, \
     construct_train_set, get_similar_docs, truncate_docs, create_tokenization_dict
 from .data_extraction import extract
+from .data_extraction.msmarco import join_query_qrels
 from .inference import run_inference
 from .ann_index import build_index, build_index_single_file, validate, get_train_samples
 from .train import train_model, train_model_with_refresh
@@ -131,3 +132,4 @@ run.add_command(get_train_samples, 'train_samples')
 run.add_command(train_model, 'train_model')
 run.add_command(train_model_with_refresh, 'train_model_with_refresh')
 run.add_command(prepare_encoding_dict, 'prepare_encoding_dict')
+run.add_command(join_query_qrels, 'join_query_qrels')

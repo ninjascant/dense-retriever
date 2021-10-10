@@ -26,14 +26,18 @@ logger.addHandler(c_handler)
 @click.argument('qrel_file', type=str)
 @click.argument('out_file', type=str)
 def join_query_qrels(query_file, qrel_file, out_file):
-    queries = pd.read_csv(query_file, sep='\t', header=None)
+    if query_file.split('.')[-1] == 'tsv':
+        queries = pd.read_csv(query_file, sep='\t', header=None)
+    else:
+        queries = pd.read_json(query_file, lines=True)
+        queries = queries.drop(columns=['doc_id'])
     queries.columns = ['qid', 'query']
 
     qrels = pd.read_csv(qrel_file, sep=' ', header=None)
     qrels.columns = ['qid', 'none', 'doc_id', 'none1']
     qrels = qrels[['qid', 'doc_id']]
 
-    qrels = qrels.merge(queries, on='qid')
+    qrels = qrels.merge(queries, on='qid', how='inner')
 
     query_samples = [QuerySample(query=row['query'], query_id=row['qid'], positive_doc_id=row['doc_id'])
                      for row in qrels.to_dict(orient='records')]
