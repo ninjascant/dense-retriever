@@ -130,7 +130,8 @@ def refresh_embeddings(dataset_dir, model_dir, out_dir, device, id_col):
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
 @click.argument('model_name', type=str)
-@click.argument('train_dataset_path', type=str)
+@click.argument('doc_dataset_dir', type=str)
+@click.argument('query_dataset_dir', type=str)
 @click.argument('out_dir', type=str)
 @click.argument('refresh_steps', type=int)
 @click.argument('total_steps', type=int)
