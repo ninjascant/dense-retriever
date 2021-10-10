@@ -2,8 +2,8 @@ import json
 from tqdm.auto import tqdm
 from loguru import logger
 from datasets import load_dataset
-from transformers import AutoTokenizer
-from ..utils.file_utils import zip_dir
+from transformers import AutoTokenizer, BertTokenizerFast
+from ..utils.file_utils import zip_dir, read_pickle_file
 
 
 def init_tokenizer(model_name):
@@ -29,15 +29,25 @@ def _encode_text_column(dataset, tokenizer, column_name, max_length, padding, re
     return encoded_dataset
 
 
+def _set_encoding_from_cache(dataset, encodings, column_name, rename_cols=True):
+    encoded_dataset = dataset.map(
+        lambda example: encodings[example['doc_id']],
+    )
+    if rename_cols:
+        encoded_dataset = _rename_torch_columns(encoded_dataset, column_name)
+    return encoded_dataset
+
+
 def tokenize_train_dataset(
         train_file_path,
         test_file_path,
         out_path,
         model_name,
-        file_type,
-        zip_path,
-        max_length,
-        padding
+        file_type='csv',
+        zip_path=None,
+        max_length=512,
+        padding='max_length',
+        encodings_file=None
 ):
     logger.info('Loading dataset')
     if test_file_path is None:
@@ -47,9 +57,14 @@ def tokenize_train_dataset(
 
     tokenizer = init_tokenizer(model_name)
 
-    logger.info('Tokenizing dataset')
-    encoded_dataset = _encode_text_column(dataset, tokenizer, 'query', max_length, padding)
-    encoded_dataset = _encode_text_column(encoded_dataset, tokenizer, 'doc', max_length, padding)
+    if encodings_file is None:
+        logger.info('Tokenizing dataset')
+        encoded_dataset = _encode_text_column(dataset, tokenizer, 'query', max_length, padding)
+        encoded_dataset = _encode_text_column(encoded_dataset, tokenizer, 'doc', max_length, padding)
+    else:
+        encodings = read_pickle_file(encodings_file)
+        encoded_dataset = _set_encoding_from_cache(dataset, encodings, 'query', True)
+        encoded_dataset = _set_encoding_from_cache(encoded_dataset, encodings, 'doc', True)
 
     logger.info('Saving dataset')
     encoded_dataset.save_to_disk(out_path)
@@ -99,3 +114,26 @@ def truncate_docs(
                 line_dict = json.loads(line)
                 line_dict['text'] = truncate_text(line_dict['text'], 550)
                 outfile.write(json.dumps(line_dict) + '\n')
+
+
+def create_tokenization_dict(input_file, out_file):
+    with open(input_file) as file:
+        docs = [json.loads(line) for i, line in enumerate(file.readlines()) ]
+
+    tokenizer = BertTokenizerFast.from_pretrained('huawei-noah/TinyBERT_General_4L_312D')
+
+    texts = [row['text'] for row in docs]
+    logger.info('Start tokenizing')
+    encodings = tokenizer.batch_encode_plus(texts, max_length=512, padding='max_length')
+    logger.info('End tokenizing')
+
+    id_to_encoding = {
+        row['doc_id']: {
+            'input_ids': encodings['input_ids'][i],
+            'attention_mask': encodings['attention_mask'][i]
+        }
+        for i, row in enumerate(docs)
+    }
+
+    with open(out_file, 'w') as outfile:
+        json.dump(id_to_encoding, outfile)

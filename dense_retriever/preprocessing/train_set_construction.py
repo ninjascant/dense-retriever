@@ -6,7 +6,7 @@ from tqdm.auto import tqdm
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from ..data_model import QuerySample, ANNSearchRes, TrainSampleData, IRTrainSample
+from ..data_model import QuerySample, ANNSearchRes, TrainSampleData, IRTrainSample, IRTrainSampleWithoutDoc
 from ..utils.file_utils import read_pickle_file, write_pickle_file, write_jsonl_file
 from ..ann_index import load_index
 
@@ -33,19 +33,24 @@ def get_similar_docs(index_file, query_embed_dir, out_file, top_n):
     write_pickle_file(out_file, ann_results)
 
 
-def construct_ir_sample(sample_data, docs, top_n=100, max_words=550):
+def construct_ir_sample(sample_data, docs=None, top_n=100, max_words=550):
     hard_negative_idx = np.random.randint(low=-1, high=top_n-1)
     hard_negative_id = sample_data.similar_doc_ids[hard_negative_idx]
 
-    hard_negative_doc = docs.loc[hard_negative_id]['text']
-    positive_doc = docs.loc[sample_data.positive_doc_id]['text']
+    if docs is not None:
+        hard_negative_doc = docs.loc[hard_negative_id]['text']
+        positive_doc = docs.loc[sample_data.positive_doc_id]['text']
 
-    if max_words:
-        hard_negative_doc = truncate_text(hard_negative_doc, max_words)
-        positive_doc = truncate_text(positive_doc, max_words)
+        if max_words:
+            hard_negative_doc = truncate_text(hard_negative_doc, max_words)
+            positive_doc = truncate_text(positive_doc, max_words)
 
-    positive_sample = IRTrainSample(query=sample_data.query, doc=positive_doc, label=1)
-    negative_sample = IRTrainSample(query=sample_data.query, doc=hard_negative_doc, label=0)
+        positive_sample = IRTrainSample(query=sample_data.query, doc=positive_doc, label=1)
+        negative_sample = IRTrainSample(query=sample_data.query, doc=hard_negative_doc, label=0)
+
+    else:
+        positive_sample = IRTrainSampleWithoutDoc(query=sample_data.query, doc_id=sample_data.positive_doc_id, label=1)
+        negative_sample = IRTrainSampleWithoutDoc(query=sample_data.query, doc_id=hard_negative_id, label=0)
 
     return positive_sample, negative_sample
 
@@ -56,8 +61,11 @@ def construct_train_set(doc_file, ann_res_file, query_sample_file, out_file, top
     ann_results = pd.DataFrame(ann_results)
     ann_results = ann_results.set_index('query_id')
 
-    docs = pd.read_json(doc_file, lines=True)
-    docs = docs.set_index('doc_id')
+    if doc_file is not None:
+        docs = pd.read_json(doc_file, lines=True)
+        docs = docs.set_index('doc_id')
+    else:
+        docs = None
 
     query_samples = read_pickle_file(query_sample_file)
 

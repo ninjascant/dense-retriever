@@ -40,10 +40,7 @@ def load_embeddings_to_index(input_dir, index):
     return index
 
 
-@click.command()
-@click.argument('input_dir', type=str)
-@click.argument('out_file', type=str)
-def build_index_single_file(input_dir, out_file):
+def build_index_from_file(input_dir, out_file):
     import faiss
     logger.info('Initializing index')
     index = faiss.index_factory(312, 'IDMap,Flat', faiss.METRIC_INNER_PRODUCT)
@@ -51,6 +48,13 @@ def build_index_single_file(input_dir, out_file):
     load_embeddings_to_index(input_dir, index)
     logger.info('Saving index')
     faiss.write_index(index, out_file)
+
+
+@click.command()
+@click.argument('input_dir', type=str)
+@click.argument('out_file', type=str)
+def build_index_single_file(input_dir, out_file):
+    build_index_from_file(input_dir, out_file)
 
 
 @click.command()
@@ -84,7 +88,7 @@ def run_batch_search(index_path, query_embed_path, out_path, top_n=100):
     query_embeds = load_query_embeddings(query_embed_path)
 
     logger.info('Starting search')
-    _, res_idx = index.search(query_embeds, 100)
+    _, res_idx = index.search(query_embeds, top_n)
     logger.info('Finished search')
     np.save(out_path, res_idx)
     return res_idx

@@ -28,3 +28,10 @@ class IRTrainSample:
     query: str
     doc: str
     label: int
+
+
+@dataclass()
+class IRTrainSampleWithoutDoc:
+    query: str
+    doc_id: str
+    label: int

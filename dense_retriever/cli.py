@@ -1,10 +1,10 @@
 import click
 from .preprocessing import tokenize_train_dataset, tokenize_test_dataset, get_train_set_splits, \
-    construct_train_set, get_similar_docs, truncate_docs
+    construct_train_set, get_similar_docs, truncate_docs, create_tokenization_dict
 from .data_extraction import extract
 from .inference import run_inference
 from .ann_index import build_index, build_index_single_file, validate, get_train_samples
-from .train import train_model
+from .train import train_model, train_model_with_refresh
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
@@ -102,6 +102,13 @@ def truncate(input_file, out_file):
     truncate_docs(input_file, out_file)
 
 
+@click.command()
+@click.argument('input_file')
+@click.argument('out_file')
+def prepare_encoding_dict(input_file, out_file):
+    create_tokenization_dict(input_file, out_file)
+
+
 @click.group()
 def run():
     pass
@@ -122,3 +129,5 @@ run.add_command(build_index_single_file, 'build_index_single_file')
 run.add_command(validate, 'validate')
 run.add_command(get_train_samples, 'train_samples')
 run.add_command(train_model, 'train_model')
+run.add_command(train_model_with_refresh, 'train_model_with_refresh')
+run.add_command(prepare_encoding_dict, 'prepare_encoding_dict')
