@@ -2,9 +2,9 @@ import os
 import json
 from tqdm.auto import tqdm
 from loguru import logger
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from transformers import AutoTokenizer, BertTokenizerFast
-from ..utils.file_utils import zip_dir
+from ..utils.file_utils import zip_dir, write_pickle_file
 from ..utils.gcs_utils import download_file_from_gcs
 from ..utils.redis_utils import RedisClient
 
@@ -140,18 +140,12 @@ def prepare_encoding_cache(input_file, out_file):
         'encodings': {'input_ids': encodings['input_ids'][i], 'attention_mask': encodings['attention_mask'][i]}
     } for i, row in enumerate(docs)]
 
-    with open(out_file, 'w') as outfile:
-        for row in encodings:
-            outfile.write(json.dumps(row) + '\n')
+    write_pickle_file(out_file, encodings)
 
 
-def export_encoding_to_redis():
-    download_file_from_gcs('msmarco_train', 'encodings.tar.gz', 'encodings.tar.gz')
-    os.system('tar -xzf encodings.tar.gz')
-    client = RedisClient(hostname='localhost', port=6379, username=None, passwd=None)
-
-    with open('encodings_sample.json') as file:
-        for line in tqdm(file, total=319927):
-            row = json.loads(line)
-            client.write(row['doc_id'], row['encodings'])
+def export_encoding_to_redis(encoding_dataset_dir):
+    client = RedisClient(hostname='localhost')
+    dataset = load_from_disk(encoding_dataset_dir)
+    dataset.map(lambda row:
+                client.write(row['doc_id'], {'input_ids': row['input_ids'], 'attention_mask': row['attention_mask']}))
 

@@ -112,8 +112,9 @@ def prepare_encoding_cache_command(input_file, out_file):
 
 
 @click.command()
-def export_encodings_command():
-    export_encoding_to_redis()
+@click.argument('encoding_dataset_dir')
+def export_encodings_command(encoding_dataset_dir):
+    export_encoding_to_redis(encoding_dataset_dir)
 
 
 @click.group()
