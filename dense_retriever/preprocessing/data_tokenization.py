@@ -41,6 +41,7 @@ def _set_encoding_from_cache(dataset, column_name, rename_cols=True):
         return {'input_ids': encoding['input_ids'], 'attention_mask': encoding['attention_mask']}
 
     encoded_dataset = dataset.map(get_encoding)
+    encoded_dataset = encoded_dataset.remove_columns(column_name)
     if rename_cols:
         encoded_dataset = _rename_torch_columns(encoded_dataset, column_name)
     return encoded_dataset
@@ -136,7 +137,7 @@ def prepare_encoding_cache(input_file, out_file):
 
     encodings = [{
         'doc_id': row['doc_id'],
-        'encodings': {'input_ids': encodings['input_ids'][i], 'attention_mask': encodings['attention_mask']}
+        'encodings': {'input_ids': encodings['input_ids'][i], 'attention_mask': encodings['attention_mask'][i]}
     } for i, row in enumerate(docs)]
 
     with open(out_file, 'w') as outfile:
@@ -152,5 +153,5 @@ def export_encoding_to_redis():
     with open('encodings_sample.json') as file:
         for line in tqdm(file, total=319927):
             row = json.loads(line)
-            client.write(row['doc_id'], row['encoding'])
+            client.write(row['doc_id'], row['encodings'])
 
