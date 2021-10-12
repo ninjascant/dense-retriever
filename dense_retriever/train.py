@@ -165,7 +165,7 @@ def train_model_with_refresh(
         logging_steps=1000,
         lr_scheduler_type='constant',
         learning_rate=3e-5,
-        evaluation_strategy='epoch',
+        evaluation_strategy='no',
         save_strategy='no',
         output_dir='./tmp'
     )
