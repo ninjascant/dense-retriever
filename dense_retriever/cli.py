@@ -1,6 +1,6 @@
 import click
 from .preprocessing import tokenize_train_dataset, tokenize_test_dataset, get_train_set_splits, \
-    construct_train_set, get_similar_docs, truncate_docs, create_tokenization_dict
+    construct_train_set, get_similar_docs, truncate_docs, prepare_encoding_cache
 from .preprocessing.data_tokenization import export_encoding_to_redis
 from .data_extraction import extract
 from .data_extraction.msmarco import join_query_qrels
@@ -107,8 +107,8 @@ def truncate(input_file, out_file):
 @click.command()
 @click.argument('input_file')
 @click.argument('out_file')
-def prepare_encoding_dict(input_file, out_file):
-    create_tokenization_dict(input_file, out_file)
+def prepare_encoding_cache_command(input_file, out_file):
+    prepare_encoding_cache(input_file, out_file)
 
 
 @click.command()
@@ -137,6 +137,6 @@ run.add_command(validate, 'validate')
 run.add_command(get_train_samples, 'train_samples')
 run.add_command(train_model, 'train_model')
 run.add_command(train_model_with_refresh, 'train_model_with_refresh')
-run.add_command(prepare_encoding_dict, 'prepare_encoding_dict')
+run.add_command(prepare_encoding_cache_command, 'prepare_encoding_cache')
 run.add_command(join_query_qrels, 'join_query_qrels')
 run.add_command(export_encodings_command, 'export_encodings')

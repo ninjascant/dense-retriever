@@ -16,6 +16,7 @@ def truncate_text(text, max_words):
 
 
 def indices_to_ids(indices):
+    indices = [idx for idx in indices if idx != -1]
     return ['D' + str(idx) for idx in indices]
 
 

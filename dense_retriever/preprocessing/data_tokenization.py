@@ -37,10 +37,7 @@ def _set_encoding_from_cache(dataset, column_name, rename_cols=True):
 
     def get_encoding(example):
         doc_id = example['doc']
-        try:
-            encoding = client.read(doc_id)
-        except:
-            encoding = {'input_ids': [], 'attention_mask': []}
+        encoding = client.read(doc_id)
         return {'input_ids': encoding['input_ids'], 'attention_mask': encoding['attention_mask']}
 
     encoded_dataset = dataset.map(get_encoding)
@@ -126,27 +123,25 @@ def truncate_docs(
                 outfile.write(json.dumps(line_dict) + '\n')
 
 
-def create_tokenization_dict(input_file, out_file):
+def prepare_encoding_cache(input_file, out_file):
     with open(input_file) as file:
-        docs = [json.loads(line) for i, line in enumerate(file.readlines()) ]
+        docs = [json.loads(line) for i, line in enumerate(file.readlines())]
 
     tokenizer = BertTokenizerFast.from_pretrained('huawei-noah/TinyBERT_General_4L_312D')
 
     texts = [row['text'] for row in docs]
     logger.info('Start tokenizing')
-    encodings = tokenizer.batch_encode_plus(texts, max_length=512, padding='max_length')
+    encodings = tokenizer.batch_encode_plus(texts, max_length=512, padding='max_length', truncation=True)
     logger.info('End tokenizing')
 
-    id_to_encoding = {
-        row['doc_id']: {
-            'input_ids': encodings['input_ids'][i],
-            'attention_mask': encodings['attention_mask'][i]
-        }
-        for i, row in enumerate(docs)
-    }
+    encodings = [{
+        'doc_id': row['doc_id'],
+        'encodings': {'input_ids': encodings['input_ids'][i], 'attention_mask': encodings['attention_mask']}
+    } for i, row in enumerate(docs)]
 
     with open(out_file, 'w') as outfile:
-        json.dump(id_to_encoding, outfile)
+        for row in encodings:
+            outfile.write(json.dumps(row) + '\n')
 
 
 def export_encoding_to_redis():
@@ -154,7 +149,7 @@ def export_encoding_to_redis():
     os.system('tar -xzf encodings.tar.gz')
     client = RedisClient(hostname='localhost', port=6379, username=None, passwd=None)
 
-    with open('encodings.jsonl') as file:
+    with open('encodings_sample.json') as file:
         for line in tqdm(file, total=319927):
             row = json.loads(line)
             client.write(row['doc_id'], row['encoding'])
