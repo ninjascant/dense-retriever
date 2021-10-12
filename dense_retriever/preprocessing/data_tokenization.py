@@ -1,9 +1,12 @@
+import os
 import json
 from tqdm.auto import tqdm
 from loguru import logger
 from datasets import load_dataset
 from transformers import AutoTokenizer, BertTokenizerFast
-from ..utils.file_utils import zip_dir, read_pickle_file
+from ..utils.file_utils import zip_dir
+from ..utils.gcs_utils import download_file_from_gcs
+from ..utils.redis_utils import RedisClient
 
 
 def init_tokenizer(model_name):
@@ -13,7 +16,7 @@ def init_tokenizer(model_name):
 def _rename_torch_columns(dataset, column_name):
     dataset = dataset.rename_column('input_ids', f'{column_name}_input_ids')
     dataset = dataset.rename_column('attention_mask', f'{column_name}_attention_mask')
-    dataset = dataset.rename_column('token_type_ids', f'{column_name}_token_type_ids')
+    # dataset = dataset.rename_column('token_type_ids', f'{column_name}_token_type_ids')
     return dataset
 
 
@@ -29,10 +32,18 @@ def _encode_text_column(dataset, tokenizer, column_name, max_length, padding, re
     return encoded_dataset
 
 
-def _set_encoding_from_cache(dataset, encodings, column_name, rename_cols=True):
-    encoded_dataset = dataset.map(
-        lambda example: encodings[example['doc_id']],
-    )
+def _set_encoding_from_cache(dataset, column_name, rename_cols=True):
+    client = RedisClient(hostname='localhost')
+
+    def get_encoding(example):
+        doc_id = example['doc']
+        try:
+            encoding = client.read(doc_id)
+        except:
+            encoding = {'input_ids': [], 'attention_mask': []}
+        return {'input_ids': encoding['input_ids'], 'attention_mask': encoding['attention_mask']}
+
+    encoded_dataset = dataset.map(get_encoding)
     if rename_cols:
         encoded_dataset = _rename_torch_columns(encoded_dataset, column_name)
     return encoded_dataset
@@ -47,7 +58,7 @@ def tokenize_train_dataset(
         zip_path=None,
         max_length=512,
         padding='max_length',
-        encodings_file=None
+        use_cache=False
 ):
     logger.info('Loading dataset')
     if test_file_path is None:
@@ -57,14 +68,13 @@ def tokenize_train_dataset(
 
     tokenizer = init_tokenizer(model_name)
 
-    if encodings_file is None:
+    if not use_cache:
         logger.info('Tokenizing dataset')
         encoded_dataset = _encode_text_column(dataset, tokenizer, 'query', max_length, padding)
         encoded_dataset = _encode_text_column(encoded_dataset, tokenizer, 'doc', max_length, padding)
     else:
-        encodings = read_pickle_file(encodings_file)
-        encoded_dataset = _set_encoding_from_cache(dataset, encodings, 'query', True)
-        encoded_dataset = _set_encoding_from_cache(encoded_dataset, encodings, 'doc', True)
+        encoded_dataset = _set_encoding_from_cache(dataset, 'query', True)
+        encoded_dataset = _set_encoding_from_cache(encoded_dataset, 'doc', True)
 
     logger.info('Saving dataset')
     encoded_dataset.save_to_disk(out_path)
@@ -137,3 +147,15 @@ def create_tokenization_dict(input_file, out_file):
 
     with open(out_file, 'w') as outfile:
         json.dump(id_to_encoding, outfile)
+
+
+def export_encoding_to_redis():
+    download_file_from_gcs('msmarco_train', 'encodings.tar.gz', 'encodings.tar.gz')
+    os.system('tar -xzf encodings.tar.gz')
+    client = RedisClient(hostname='localhost', port=6379, username=None, passwd=None)
+
+    with open('encodings.jsonl') as file:
+        for line in tqdm(file, total=319927):
+            row = json.loads(line)
+            client.write(row['doc_id'], row['encoding'])
+

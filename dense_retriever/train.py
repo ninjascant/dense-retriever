@@ -195,7 +195,7 @@ def train_model_with_refresh(
                 model_dir=out_dir,
                 out_dir='model_outputs/query_embeddings',
                 device=device,
-                id_col='qid'
+                id_col='id'
             )
 
             logger.info('Updating index')
@@ -232,7 +232,7 @@ def train_model_with_refresh(
                 out_path='model_outputs/dataset_refreshed',
                 model_name=model_name,
                 file_type='csv',
-                encodings_file=encoding_file
+                use_cache=True
             )
 
             dataset = _load_dataset('model_outputs/dataset_refreshed')
