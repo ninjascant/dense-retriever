@@ -1,5 +1,6 @@
 import os
 import json
+import datetime
 import click
 from loguru import logger
 import numpy as np
@@ -10,11 +11,13 @@ from datasets import load_from_disk, load_metric
 
 from .models import BertDot
 
-from .utils.gcs_utils import download_file_from_gcs
+from .utils.gcs_utils import download_file_from_gcs, upload_file_to_gcs
 from .utils.file_utils import unzip_arch
 from .preprocessing import construct_train_set, get_train_set_splits, tokenize_train_dataset, get_similar_docs
 from .inference import InferenceRunner, save_inference_results, prepare_dataloader, prepare_dataset, extract_ids
 from .ann_index import build_index_from_file
+
+logger.add("index-refresh.log")
 
 
 def _download_dataset(bucket, gcs_path):
@@ -248,3 +251,7 @@ def train_model_with_refresh(
         trainer.train()
         logger.info('Saving intermediate results')
         trainer.model.transformer.save_pretrained(out_dir)
+        os.system('tar -czf model_out.tar.gz model_out')
+
+        dt = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        upload_file_to_gcs('finetuned_models', 'model_out.tar.gz', f'model_out_{dt}_{i}.tar.gz')
