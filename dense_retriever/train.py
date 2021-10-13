@@ -138,7 +138,6 @@ def refresh_embeddings(dataset_dir, model_dir, out_dir, device, id_col):
 @click.argument('out_dir', type=str)
 @click.argument('refresh_steps', type=int)
 @click.argument('total_steps', type=int)
-@click.argument('encoding_file', type=str)
 @click.argument('query_sample_file', type=str)
 @click.option('-b', '--batch_size', type=int, default=8)
 @click.option('-a', '--accum-steps', type=int, default=1)
@@ -151,7 +150,6 @@ def train_model_with_refresh(
     out_dir,
     refresh_steps,
     total_steps,
-    encoding_file,
     query_sample_file,
     batch_size,
     accum_steps,
@@ -182,7 +180,6 @@ def train_model_with_refresh(
             # dataset = _load_dataset(dataset_path)
         else:
             model = BertDot(out_dir)
-
             logger.info('Updating doc embeddings')
             refresh_embeddings(
                 dataset_dir=doc_dataset_dir,
@@ -254,4 +251,4 @@ def train_model_with_refresh(
         os.system('tar -czf model_out.tar.gz model_out')
 
         dt = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        upload_file_to_gcs('finetuned_models', 'model_out.tar.gz', f'model_out_{dt}_{i}.tar.gz')
+        upload_file_to_gcs('finetuned-models', 'model_out.tar.gz', f'model_out_{dt}_{i}.tar.gz')
