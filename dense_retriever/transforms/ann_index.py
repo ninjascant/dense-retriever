@@ -116,7 +116,7 @@ class SearchEvaluator(BaseTransform):
 
     @staticmethod
     def _calc_reciprocal_rank(row):
-        if row['positive_doc_id'] in row['search_results']:
+        if int(row['positive_doc_id'][1:]) in row['search_results']:
             reciprocal_rank = 1 / row['search_results'].index(row['positive_doc_id'])
         else:
             reciprocal_rank = 0
@@ -144,7 +144,7 @@ class SearchEvaluator(BaseTransform):
         return None
 
     def _transform_fn(self, input_data):
-        search_results_with_ranks = input_data.apply(self._calc_reciprocal_rank)
+        search_results_with_ranks = input_data.apply(self._calc_reciprocal_rank, axis=1)
         top_n = len(search_results_with_ranks.iloc[0]['search_results'])
         mrr = search_results_with_ranks['reciprocal_rank'].mean()
         mrr = '%.6f' % mrr
