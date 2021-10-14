@@ -10,6 +10,13 @@ from ..data_model import ANNSearchRes
 from ..utils.file_utils import load_json_file, read_pickle_file, write_pickle_file
 
 
+def _convert_ids_to_int(ids):
+    is_str = type(ids[0]) is str
+    if is_str:
+        ids = [int(doc_id[1:]) for doc_id in ids]
+    return ids
+
+
 class ANNIndex(BaseTransform):
     def __init__(
             self, 
@@ -57,10 +64,12 @@ class ANNIndex(BaseTransform):
 
     @staticmethod
     def _load_embeddings_from_single_file(input_dir):
-        embeddings = np.load(os.path.join(input_dir, 'embeddings.npy')).astype(np.float32)
         ids = load_json_file(os.path.join(input_dir, 'ids.json'))
-        ids = [int(doc_id[1:]) for doc_id in ids]
+        ids = _convert_ids_to_int(ids)
         ids = np.array(ids).astype(np.int64)
+
+        embeddings = np.load(os.path.join(input_dir, 'embeddings.npy')).astype(np.float32)
+
         return embeddings, ids
 
     def _load_input_data(self, input_path):
@@ -72,9 +81,10 @@ class ANNIndex(BaseTransform):
         return embeddings, ids
 
     def _fit_transformer_fn(self, input_data):
-        self.transformer = faiss.index_factory(self.embedding_size, 'IDMap,Flat', faiss.METRIC_INNER_PRODUCT)
+        index = faiss.index_factory(self.embedding_size, 'IDMap,Flat', faiss.METRIC_INNER_PRODUCT)
         embeddings, ids = input_data
-        self.transformer.add_with_ids(embeddings, ids)
+        index.add_with_ids(embeddings, ids)
+        return index
 
     def _transform_fn(self, input_data):
         embeddings, ids = input_data
@@ -88,12 +98,19 @@ class ANNIndex(BaseTransform):
     def _save_transformer(self, out_path):
         faiss.write_index(self.transformer, out_path)
 
-    def _load_transformer(self, input_pass):
-        self.transformer = faiss.read_index(input_pass)
+    def _load_transformer(self, input_path):
+        self.transformer = faiss.read_index(input_path)
 
 
 class SearchEvaluator(BaseTransform):
-    def __init__(self, transformer_out_path, query_sample_file):
+    def __init__(self, transformer_out_path: None, query_sample_file: str):
+        """
+        Transformer that evaluates embedding performance by calculating MRR over ANN index search results
+
+        :param transformer_out_path: leave it empty since SearchEvaluator doesn't have a transformer
+        :param query_sample_file: path to pickle file with query samples (see data_model.QuerySample class for more
+        details
+        """
         super(SearchEvaluator, self).__init__(transformer_out_path)
         self._query_sample_file = query_sample_file
 
