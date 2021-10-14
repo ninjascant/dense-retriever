@@ -96,9 +96,9 @@ class RobertaDot_NLL_LN(NLL, RobertaForSequenceClassification):
         return self.query_emb(input_ids, attention_mask)
 
 
-class BertDot(nn.Module):
+class BertDotModel(nn.Module):
     def __init__(self, model_name):
-        super(BertDot, self).__init__()
+        super(BertDotModel, self).__init__()
 
         self.transformer = AutoModel.from_pretrained(model_name)
         self.dropout = nn.Dropout(0.8)
@@ -128,7 +128,7 @@ class BertDot(nn.Module):
 
 models = {
     'ance': RobertaDot_NLL_LN,
-    'tinybert': BertDot
+    'tinybert': BertDotModel
 }
 
 
@@ -138,7 +138,7 @@ def load_model(model_name, model_path):
             model_path
         )
     elif model_name == 'bert-dot':
-        model = BertDot(model_path)
+        model = BertDotModel(model_path)
     else:
         raise NotImplementedError
     return model

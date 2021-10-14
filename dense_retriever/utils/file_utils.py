@@ -43,3 +43,8 @@ def read_pickle_file(file_path):
 def write_pickle_file(file_path, obj):
     with open(file_path, 'wb') as f:
         return pickle.dump(obj, f)
+
+
+def load_json_file(file_path):
+    with open(file_path) as json_file:
+        return json.load(json_file)
