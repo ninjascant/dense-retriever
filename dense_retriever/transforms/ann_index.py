@@ -121,8 +121,8 @@ class SearchEvaluator(BaseTransform):
 
     @staticmethod
     def _calc_reciprocal_rank(row):
-        if int(row['positive_doc_id'][1:]) in row['search_results']:
-            reciprocal_rank = 1 / row['search_results'].index(row['positive_doc_id'])
+        if row['positive_doc_id'] in row['search_results']:
+            reciprocal_rank = 1 / (row['search_results'].index(row['positive_doc_id']) + 1)
         else:
             reciprocal_rank = 0
         row['reciprocal_rank'] = reciprocal_rank

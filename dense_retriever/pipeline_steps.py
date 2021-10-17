@@ -80,17 +80,20 @@ def train_model_with_refresh(
 ):
     refresh_iterations = int(total_steps / refresh_steps) + 1
     dt = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    model_base_dir = model_out_dir
+
     for i in range(refresh_iterations):
-        model_out_dir = f'{model_out_dir}_{dt}_{i}'
+        model_out_dir = f'{model_base_dir}_{dt}_{i}'
         logger.info(f'Iteration: {i+1}')
         if i == 0:
             train_model(model_name_or_path, init_train_set_dir, model_out_dir,  refresh_steps, batch_size,
                         accum_steps, log_out_file=f'model-out-{i}.log', save_to_gcs=True)
         else:
+            model_out_prev_epoch = f'{model_base_dir}_{dt}_{i - 1}'
             logger.info('Updating doc embeddings')
-            run_inference(model_out_dir, doc_dataset_dir, 'model_outputs/doc_embeddings', 'doc_id')
+            run_inference(model_out_prev_epoch, doc_dataset_dir, 'model_outputs/doc_embeddings', 'doc_id')
             logger.info('Updating query embeddings')
-            run_inference(model_out_dir, query_dataset_dir, 'model_outputs/query_embeddings', 'id')
+            run_inference(model_out_prev_epoch, query_dataset_dir, 'model_outputs/query_embeddings', 'id')
 
             logger.info('Updating ANN index')
             run_search_from_scratch('model_outputs/doc_embeddings', 'model_outputs/query_embeddings',
@@ -105,6 +108,5 @@ def train_model_with_refresh(
                                out_path='model_outputs/dataset_refreshed')
 
             logger.info('Continue model training')
-            model_out_prev_epoch = f'{model_out_dir}_{dt}_{i-1}'
             train_model(model_out_prev_epoch, 'model_outputs/dataset_refreshed', model_out_dir, refresh_steps,
                         batch_size, accum_steps, log_out_file=f'model-out-{i}.log', save_to_gcs=True)

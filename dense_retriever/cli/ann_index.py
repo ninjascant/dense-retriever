@@ -1,4 +1,5 @@
 import click
+from ..transforms.ann_index import ANNIndex, SearchEvaluator
 from ..pipeline_steps import run_search_from_scratch
 
 

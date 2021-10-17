@@ -98,6 +98,7 @@ class BaseEstimator:
         self._save_model(trainer, model_out_dir)
 
     def predict(self, dataset_dir, out_dir, id_col='doc_id'):
+        logger.info('Loading data')
         dataset = self._load_dataset(dataset_dir, torch_columns=['input_ids', 'attention_mask'])
         dataloader = torch.utils.data.DataLoader(dataset['test'], self._eval_batch_size, shuffle=False)
         batch_iterator = tqdm(enumerate(dataloader), total=len(dataloader))
