@@ -36,7 +36,7 @@ def run_search_from_scratch(
     transformer.transform(query_embedding_dir, out_path)
 
 
-def train_model(model_name, dataset_path, out_dir, train_steps, batch_size, accum_steps, gcs_out_path=None,
+def train_model(model_name, dataset_path, out_dir, train_steps, batch_size, accum_steps, save_to_gcs=False,
                 log_out_file=None):
     if log_out_file is not None:
         logger.add(log_out_file)
@@ -48,10 +48,9 @@ def train_model(model_name, dataset_path, out_dir, train_steps, batch_size, accu
     )
     estimator.fit(dataset_dir=dataset_path, model_out_dir=out_dir)
 
-    if gcs_out_path is not None:
-        dt = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    if save_to_gcs:
         zip_dir(out_dir, f'{out_dir}.tar.gz')
-        upload_file_to_gcs('finetuned-models', f'{out_dir}.tar.gz', f'{out_dir}_{dt}.tar.gz')
+        upload_file_to_gcs('finetuned-models', f'{out_dir}.tar.gz', f'{out_dir}.tar.gz')
 
 
 def run_inference(model_name_or_path, dataset_dir, out_dir, id_col='doc_id'):
@@ -63,10 +62,6 @@ def run_inference(model_name_or_path, dataset_dir, out_dir, id_col='doc_id'):
         lr=0
     )
     estimator.predict(dataset_dir=dataset_dir, out_dir=out_dir, id_col=id_col)
-
-
-# def refresh_train_set(model_name_or_path):
-#     estimator = BertDot(model_name_or_path, train_steps=0, batch_size=32, accum_steps=)
 
 
 def train_model_with_refresh(
@@ -84,12 +79,13 @@ def train_model_with_refresh(
     device
 ):
     refresh_iterations = int(total_steps / refresh_steps) + 1
+    dt = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     for i in range(refresh_iterations):
+        model_out_dir = f'{model_out_dir}_{dt}_{i}'
         logger.info(f'Iteration: {i+1}')
         if i == 0:
-            continue
-            # train_model(model_name_or_path, init_train_set_dir, model_out_dir,  refresh_steps, batch_size,
-            #             accum_steps, f'model-out-{i}.log')
+            train_model(model_name_or_path, init_train_set_dir, model_out_dir,  refresh_steps, batch_size,
+                        accum_steps, log_out_file=f'model-out-{i}.log', save_to_gcs=True)
         else:
             logger.info('Updating doc embeddings')
             run_inference(model_out_dir, doc_dataset_dir, 'model_outputs/doc_embeddings', 'doc_id')
@@ -110,4 +106,4 @@ def train_model_with_refresh(
 
             logger.info('Continue model training')
             train_model(model_out_dir, 'model_outputs/dataset_refreshed', model_out_dir, refresh_steps, batch_size,
-                        accum_steps, f'model-out-{i}.log')
+                        accum_steps, log_out_file=f'model-out-{i}.log', save_to_gcs=True)
