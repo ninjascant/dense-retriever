@@ -54,7 +54,7 @@ def train_model(model_name, dataset_path, out_dir, train_steps, batch_size, accu
         upload_file_to_gcs('finetuned-models', f'{out_dir}.tar.gz', f'{out_dir}_{dt}.tar.gz')
 
 
-def run_inference(model_name_or_path, dataset_dir, out_dir):
+def run_inference(model_name_or_path, dataset_dir, out_dir, id_col='doc_id'):
     estimator = BertDot(
         model_name_or_path=model_name_or_path,
         train_steps=0,
@@ -62,7 +62,7 @@ def run_inference(model_name_or_path, dataset_dir, out_dir):
         accum_steps=0,
         lr=0
     )
-    estimator.predict(dataset_dir=dataset_dir, out_dir=out_dir)
+    estimator.predict(dataset_dir=dataset_dir, out_dir=out_dir, id_col=id_col)
 
 
 # def refresh_train_set(model_name_or_path):
@@ -87,17 +87,18 @@ def train_model_with_refresh(
     for i in range(refresh_iterations):
         logger.info(f'Iteration: {i+1}')
         if i == 0:
-            train_model(model_name_or_path, init_train_set_dir, model_out_dir,  refresh_steps, batch_size,
-                        accum_steps, f'model-out-{i}.log')
+            continue
+            # train_model(model_name_or_path, init_train_set_dir, model_out_dir,  refresh_steps, batch_size,
+            #             accum_steps, f'model-out-{i}.log')
         else:
             logger.info('Updating doc embeddings')
-            run_inference(model_out_dir, doc_dataset_dir, 'model_outputs/doc_embeddings')
+            run_inference(model_out_dir, doc_dataset_dir, 'model_outputs/doc_embeddings', 'doc_id')
             logger.info('Updating query embeddings')
-            run_inference(model_out_dir, query_dataset_dir, 'model_outputs/query_embeddings')
+            run_inference(model_out_dir, query_dataset_dir, 'model_outputs/query_embeddings', 'id')
 
             logger.info('Updating ANN index')
             run_search_from_scratch('model_outputs/doc_embeddings', 'model_outputs/query_embeddings',
-                                    'model_outputs/query_similar_docs.pkl', embedding_size=312, top_n=50,
+                                    'model_outputs/query_similar_docs.pkl', embedding_size=312, top_n=top_n,
                                     index_out_path=None, load_from_sub_dirs=False)
 
             logger.info('Updating train set')

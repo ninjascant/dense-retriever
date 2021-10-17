@@ -34,12 +34,12 @@ def _set_encoding_from_cache(dataset, column_name, rename_cols=True):
     client = RedisClient(hostname='localhost')
 
     def get_encoding(example):
-        doc_id = example['doc']
+        doc_id = example['doc_id']
         encoding = client.read(doc_id)
         return {'input_ids': encoding['input_ids'], 'attention_mask': encoding['attention_mask']}
 
     encoded_dataset = dataset.map(get_encoding)
-    encoded_dataset = encoded_dataset.remove_columns(column_name)
+    encoded_dataset = encoded_dataset.remove_columns('doc_id')
     if rename_cols:
         encoded_dataset = _rename_torch_columns(encoded_dataset, column_name)
     return encoded_dataset
@@ -166,7 +166,7 @@ class TrainSetTokenizer(BaseTransform):
         self.tokenizer = BertTokenizerFast.from_pretrained(tokenizer_name_or_path)
 
     def _load_input_data(self, input_path: str):
-        dataset = load_dataset('json', data_files=[input_path])
+        dataset = load_dataset('json', data_files=[input_path])['train']
         dataset = dataset.train_test_split(test_size=0.2)
         return dataset
 
@@ -176,7 +176,7 @@ class TrainSetTokenizer(BaseTransform):
             encoded_dataset = _encode_text_column(input_data, self.tokenizer, 'query', self.max_length, self.padding)
             encoded_dataset = _encode_text_column(encoded_dataset, self.tokenizer, 'doc', self.max_length, self.padding)
         else:
-            encoded_dataset = _set_encoding_from_cache(input_data, 'query', True)
+            encoded_dataset = _encode_text_column(input_data, self.tokenizer, 'query', 100, 'max_length')
             encoded_dataset = _set_encoding_from_cache(encoded_dataset, 'doc', True)
 
         return encoded_dataset

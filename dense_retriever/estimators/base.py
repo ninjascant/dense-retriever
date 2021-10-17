@@ -7,6 +7,11 @@ from transformers import TrainingArguments, Trainer
 from datasets import load_metric
 
 
+def extract_ids(dataset, id_column):
+    ids = dataset['test'][id_column]
+    return ids
+
+
 def softmax(x):
     """Compute softmax values for each sets of scores in x."""
     e_x = np.exp(x - np.max(x))
@@ -92,11 +97,13 @@ class BaseEstimator:
 
         self._save_model(trainer, model_out_dir)
 
-    def predict(self, dataset_dir, out_dir):
+    def predict(self, dataset_dir, out_dir, id_col='doc_id'):
         dataset = self._load_dataset(dataset_dir, torch_columns=['input_ids', 'attention_mask'])
-        dataloader = torch.utils.data.Dataloader(dataset['test'], self._eval_batch_size, shuffle=False)
+        dataloader = torch.utils.data.DataLoader(dataset['test'], self._eval_batch_size, shuffle=False)
         batch_iterator = tqdm(enumerate(dataloader), total=len(dataloader))
+        ids = extract_ids(dataset, id_col)
 
+        self.model.to(self.device)
         self.model.eval()
         total_embeddings = []
         logger.info('Starting inference')
@@ -111,6 +118,6 @@ class BaseEstimator:
         total_embeddings = np.vstack(total_embeddings)
         logger.info('Finished inference')
 
-        self._save_inference_results(out_dir)
+        self._save_inference_results((total_embeddings, ids), out_dir)
 
         return total_embeddings

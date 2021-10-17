@@ -17,6 +17,10 @@ def _convert_ids_to_int(ids):
     return ids
 
 
+def convert_idx_to_id(indices):
+    return [f'D{idx}' for idx in indices]
+
+
 class ANNIndex(BaseTransform):
     def __init__(
             self, 
@@ -89,7 +93,8 @@ class ANNIndex(BaseTransform):
     def _transform_fn(self, input_data):
         embeddings, ids = input_data
         _, res_idx = self.transformer.search(embeddings, self.top_n)
-        search_results = [ANNSearchRes(ids[i], result) for i, result in enumerate(res_idx)]
+        res_ids = [convert_idx_to_id(indices) for indices in res_idx]
+        search_results = [ANNSearchRes(ids[i], result) for i, result in enumerate(res_ids)]
         return search_results
 
     def _save_transformed_data(self, transformed_data, out_path):
