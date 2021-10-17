@@ -1,5 +1,5 @@
 import click
-from ..estimators.bert_dot import BertDot
+from ..pipeline_steps import run_inference
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
@@ -7,11 +7,4 @@ from ..estimators.bert_dot import BertDot
 @click.argument('dataset_dir', type=str)
 @click.argument('out_dir', type=str)
 def run_inference_command(model_name_or_path, dataset_dir, out_dir):
-    estimator = BertDot(
-        model_name_or_path=model_name_or_path,
-        train_steps=0,
-        batch_size=32,
-        accum_steps=0,
-        lr=0
-    )
-    estimator.predict(dataset_dir=dataset_dir, out_dir=out_dir)
+    run_inference(model_name_or_path, dataset_dir, out_dir)

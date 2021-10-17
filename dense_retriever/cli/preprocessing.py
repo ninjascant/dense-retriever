@@ -1,5 +1,5 @@
 import click
-from ..transforms.data_extraction import QuerySampleConstructor
+from ..transforms.preprocessing import QuerySampleConstructor
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))

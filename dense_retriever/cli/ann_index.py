@@ -1,5 +1,5 @@
 import click
-from ..transforms.ann_index import ANNIndex, SearchEvaluator
+from ..pipeline_steps import run_search_from_scratch
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
@@ -19,14 +19,8 @@ def run_search_from_scratch_command(
         load_from_sub_dirs,
         index_out_path
 ):
-    transformer = ANNIndex(
-        transformer_out_path=index_out_path,
-        embedding_size=embedding_size,
-        top_n=top_n,
-        load_from_sub_dirs=load_from_sub_dirs
-    )
-    transformer.fit(context_embedding_dir)
-    transformer.transform(query_embedding_dir, out_path)
+    run_search_from_scratch(context_embedding_dir, query_embedding_dir, out_path, embedding_size, top_n,
+                            load_from_sub_dirs, index_out_path)
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
