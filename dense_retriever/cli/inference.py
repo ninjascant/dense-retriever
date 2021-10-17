@@ -6,5 +6,6 @@ from ..pipeline_steps import run_inference
 @click.argument('model_name_or_path', type=str)
 @click.argument('dataset_dir', type=str)
 @click.argument('out_dir', type=str)
-def run_inference_command(model_name_or_path, dataset_dir, out_dir):
-    run_inference(model_name_or_path, dataset_dir, out_dir)
+@click.option('-i', '--id-col', type=str, default='doc_id')
+def run_inference_command(model_name_or_path, dataset_dir, out_dir, id_col):
+    run_inference(model_name_or_path, dataset_dir, out_dir, id_col)

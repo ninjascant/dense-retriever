@@ -105,5 +105,6 @@ def train_model_with_refresh(
                                out_path='model_outputs/dataset_refreshed')
 
             logger.info('Continue model training')
-            train_model(model_out_dir, 'model_outputs/dataset_refreshed', model_out_dir, refresh_steps, batch_size,
-                        accum_steps, log_out_file=f'model-out-{i}.log', save_to_gcs=True)
+            model_out_prev_epoch = f'{model_out_dir}_{dt}_{i-1}'
+            train_model(model_out_prev_epoch, 'model_outputs/dataset_refreshed', model_out_dir, refresh_steps,
+                        batch_size, accum_steps, log_out_file=f'model-out-{i}.log', save_to_gcs=True)
