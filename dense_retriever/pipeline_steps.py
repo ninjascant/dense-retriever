@@ -76,7 +76,8 @@ def train_model_with_refresh(
     batch_size,
     accum_steps,
     top_n,
-    device
+    device,
+    warmup_steps
 ):
     refresh_iterations = int(total_steps / refresh_steps) + 1
     dt = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
@@ -86,7 +87,7 @@ def train_model_with_refresh(
         model_out_dir = f'{model_base_dir}_{dt}_{i}'
         logger.info(f'Iteration: {i+1}')
         if i == 0:
-            train_model(model_name_or_path, init_train_set_dir, model_out_dir,  refresh_steps, batch_size,
+            train_model(model_name_or_path, init_train_set_dir, model_out_dir,  warmup_steps, batch_size,
                         accum_steps, log_out_file=f'model-out-{i}.log', save_to_gcs=True)
         else:
             model_out_prev_epoch = f'{model_base_dir}_{dt}_{i - 1}'
