@@ -1,10 +1,25 @@
 import datetime
 from loguru import logger
+import numpy as np
+from datasets import load_metric
 from .transforms.ann_index import ANNIndex
 from .transforms.preprocessing import TrainSetConstructor, TrainSetTokenizer
 from .estimators.bert_dot import BertDot
 from .utils.file_utils import zip_dir
 from .utils.gcs_utils import upload_file_to_gcs
+
+
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
+
+
+def compute_metrics(eval_pred):
+    metric = load_metric('./metrics/f1_score.py')
+    logits, labels = eval_pred
+    predictions = softmax(logits)
+    return metric.compute(predictions=predictions, references=labels)
 
 
 def tokenize_train_set(train_set_path, tokenizer_name_or_path, use_cache, out_path):
@@ -61,7 +76,8 @@ def run_inference(model_name_or_path, dataset_dir, out_dir, id_col='doc_id'):
         num_epochs=0,
         batch_size=32,
         accum_steps=0,
-        lr=0
+        lr=0,
+        metric_fn=compute_metrics
     )
     estimator.predict(dataset_dir=dataset_dir, out_dir=out_dir, id_col=id_col)
 
