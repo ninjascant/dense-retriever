@@ -36,7 +36,7 @@ def run_search_from_scratch(
     transformer.transform(query_embedding_dir, out_path)
 
 
-def train_model(model_name, dataset_path, out_dir, batch_size, accum_steps, train_steps=None, num_epochs=None,
+def train_model(model_name, dataset_path, out_dir, batch_size, accum_steps, train_steps=-1, num_epochs=3,
                 save_to_gcs=False, log_out_file=None):
     if log_out_file is not None:
         logger.add(log_out_file)
