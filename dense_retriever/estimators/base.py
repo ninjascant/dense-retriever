@@ -32,15 +32,15 @@ class BaseEstimator:
             train_steps: int,
             num_epochs: int,
             batch_size: int,
-            accum_steps: int, lr:
-            float = 3e-5,
+            accum_steps: int,
+            lr: float = 3e-5,
             metric_fn=compute_f1,
             device=None,
             eval_batch_size=None
     ):
         self.model_name_or_path = model_name_or_path
-        self.train_steps = train_steps,
-        self.num_epochs = num_epochs,
+        self.train_steps = train_steps
+        self.num_epochs = num_epochs
         self.batch_size = batch_size
         self.accum_steps = accum_steps
         self.lr = lr
