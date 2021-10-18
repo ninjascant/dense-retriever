@@ -30,6 +30,7 @@ class BaseEstimator:
             self,
             model_name_or_path: str,
             train_steps: int,
+            num_epochs: int,
             batch_size: int,
             accum_steps: int, lr:
             float = 3e-5,
@@ -38,7 +39,8 @@ class BaseEstimator:
             eval_batch_size=None
     ):
         self.model_name_or_path = model_name_or_path
-        self.train_steps = train_steps
+        self.train_steps = train_steps,
+        self.num_epochs = num_epochs,
         self.batch_size = batch_size
         self.accum_steps = accum_steps
         self.lr = lr
@@ -72,6 +74,7 @@ class BaseEstimator:
         dataset = self._load_dataset(dataset_dir, torch_columns=None)
         train_args = TrainingArguments(
             max_steps=self.train_steps,
+            num_train_epochs=self.num_epochs,
             per_device_train_batch_size=self.batch_size,
             per_device_eval_batch_size=self.batch_size,
             gradient_accumulation_steps=self.accum_steps,

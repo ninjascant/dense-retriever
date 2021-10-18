@@ -13,12 +13,20 @@ class BertDot(BaseEstimator):
             self,
             model_name_or_path: str,
             train_steps: int,
+            num_epochs: int,
             batch_size: int,
             accum_steps: int,
             lr: float = 3e-5,
             metric_fn=None
     ):
-        super(BertDot, self).__init__(model_name_or_path, train_steps, batch_size, accum_steps, lr, metric_fn)
+        super(BertDot, self).__init__(
+            model_name_or_path=model_name_or_path,
+            train_steps=train_steps,
+            num_epochs=num_epochs,
+            batch_size=batch_size,
+            accum_steps=accum_steps,
+            lr=lr,
+            metric_fn=metric_fn)
 
     def _load_model(self):
         model = BertDotModel(self.model_name_or_path)

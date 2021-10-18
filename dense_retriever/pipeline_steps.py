@@ -36,13 +36,14 @@ def run_search_from_scratch(
     transformer.transform(query_embedding_dir, out_path)
 
 
-def train_model(model_name, dataset_path, out_dir, train_steps, batch_size, accum_steps, save_to_gcs=False,
-                log_out_file=None):
+def train_model(model_name, dataset_path, out_dir, batch_size, accum_steps, train_steps=None, num_epochs=None,
+                save_to_gcs=False, log_out_file=None):
     if log_out_file is not None:
         logger.add(log_out_file)
     estimator = BertDot(
         model_name_or_path=model_name,
         train_steps=train_steps,
+        num_epochs=num_epochs,
         batch_size=batch_size,
         accum_steps=accum_steps,
     )
@@ -57,6 +58,7 @@ def run_inference(model_name_or_path, dataset_dir, out_dir, id_col='doc_id'):
     estimator = BertDot(
         model_name_or_path=model_name_or_path,
         train_steps=0,
+        num_epochs=0,
         batch_size=32,
         accum_steps=0,
         lr=0
@@ -77,7 +79,7 @@ def train_model_with_refresh(
     accum_steps,
     top_n,
     device,
-    warmup_steps
+    num_epochs
 ):
     refresh_iterations = int(total_steps / refresh_steps) + 1
     dt = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
@@ -87,8 +89,8 @@ def train_model_with_refresh(
         model_out_dir = f'{model_base_dir}_{dt}_{i}'
         logger.info(f'Iteration: {i+1}')
         if i == 0:
-            train_model(model_name_or_path, init_train_set_dir, model_out_dir,  warmup_steps, batch_size,
-                        accum_steps, log_out_file=f'model-out-{i}.log', save_to_gcs=True)
+            train_model(model_name_or_path, init_train_set_dir, model_out_dir, batch_size,
+                        accum_steps, log_out_file=f'model-out-{i}.log', save_to_gcs=True, num_epochs=num_epochs)
         else:
             model_out_prev_epoch = f'{model_base_dir}_{dt}_{i - 1}'
             logger.info('Updating doc embeddings')
@@ -109,5 +111,6 @@ def train_model_with_refresh(
                                out_path='model_outputs/dataset_refreshed')
 
             logger.info('Continue model training')
-            train_model(model_out_prev_epoch, 'model_outputs/dataset_refreshed', model_out_dir, refresh_steps,
-                        batch_size, accum_steps, log_out_file=f'model-out-{i}.log', save_to_gcs=True)
+            train_model(model_out_prev_epoch, 'model_outputs/dataset_refreshed', model_out_dir,
+                        batch_size, accum_steps, log_out_file=f'model-out-{i}.log', save_to_gcs=True,
+                        train_steps=refresh_steps)
