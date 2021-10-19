@@ -16,7 +16,7 @@ def softmax(x):
 
 
 def compute_metrics(eval_pred):
-    metric = load_metric('./metrics/f1_score.py')
+    metric = load_metric('dense-retriever/dense_retriever/metrics/f1_score.py')
     logits, labels = eval_pred
     predictions = softmax(logits)
     return metric.compute(predictions=predictions, references=labels)
@@ -52,7 +52,7 @@ def run_search_from_scratch(
 
 
 def train_model(model_name, dataset_path, out_dir, batch_size, accum_steps, train_steps=-1, num_epochs=3,
-                save_to_gcs=False, log_out_file=None):
+                save_to_gcs=False, log_out_file=None, continue_train=False, save_steps=None):
     if log_out_file is not None:
         logger.add(log_out_file)
     estimator = BertDot(
@@ -61,6 +61,9 @@ def train_model(model_name, dataset_path, out_dir, batch_size, accum_steps, trai
         num_epochs=num_epochs,
         batch_size=batch_size,
         accum_steps=accum_steps,
+        continue_train=continue_train,
+        metric_fn=compute_metrics,
+        save_steps=save_steps
     )
     estimator.fit(dataset_dir=dataset_path, model_out_dir=out_dir)
 
@@ -129,4 +132,4 @@ def train_model_with_refresh(
             logger.info('Continue model training')
             train_model(model_out_prev_epoch, 'model_outputs/dataset_refreshed', model_out_dir,
                         batch_size, accum_steps, log_out_file=f'model-out-{i}.log', save_to_gcs=True,
-                        train_steps=refresh_steps)
+                        train_steps=refresh_steps, save_steps=refresh_steps, continue_train=True)

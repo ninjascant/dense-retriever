@@ -16,6 +16,7 @@
 
 import datasets
 from sklearn.metrics import f1_score
+import numpy as np
 
 # TODO: Add BibTeX citation
 _CITATION = """\
@@ -69,21 +70,24 @@ class F1Metric(datasets.Metric):
             inputs_description=_KWARGS_DESCRIPTION,
             # This defines the format of each prediction and reference
             features=datasets.Features({
-                'predictions': datasets.Value('string'),
-                'references': datasets.Value('string'),
+                'predictions': datasets.Value('float32'),
+                'references': datasets.Value('int32'),
             }),
             # Homepage of the metric for documentation
             homepage="http://metric.homepage",
             # Additional links to the codebase or references
             codebase_urls=["http://github.com/path/to/codebase/of/new_metric"],
-            reference_urls=["http://path.to.reference.url/new_metric"]
+            reference_urls=["http://path.to.reference.url/new_metric"],
+            format='numpy'
         )
 
     def _compute(self, predictions, references):
         """Returns the scores"""
         # TODO: Compute the different scores of the metric
+        predictions = np.where(predictions > 0.5, predictions, 0)
+        predictions = np.where(predictions < 0.5, predictions, 1)
+        predictions = predictions.astype('int32')
         accuracy = f1_score(references, predictions, average='macro')
-
 
         return {
             "f1_score": accuracy,

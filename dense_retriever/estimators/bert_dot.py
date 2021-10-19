@@ -17,7 +17,9 @@ class BertDot(BaseEstimator):
             batch_size: int,
             accum_steps: int,
             lr: float = 3e-5,
-            metric_fn=None
+            metric_fn=None,
+            continue_train=False,
+            save_steps=None
     ):
         super(BertDot, self).__init__(
             model_name_or_path=model_name_or_path,
@@ -25,7 +27,9 @@ class BertDot(BaseEstimator):
             num_epochs=num_epochs,
             batch_size=batch_size,
             accum_steps=accum_steps,
+            save_steps=save_steps,
             lr=lr,
+            continue_train=continue_train,
             metric_fn=metric_fn)
 
     def _load_model(self):

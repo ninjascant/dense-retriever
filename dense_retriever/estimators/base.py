@@ -36,7 +36,9 @@ class BaseEstimator:
             lr: float = 3e-5,
             metric_fn=compute_f1,
             device=None,
-            eval_batch_size=None
+            eval_batch_size=None,
+            save_steps=None,
+            continue_train=False
     ):
         self.model_name_or_path = model_name_or_path
         self.train_steps = train_steps
@@ -57,6 +59,14 @@ class BaseEstimator:
             self._eval_batch_size = batch_size
         else:
             self._eval_batch_size = eval_batch_size
+
+        if save_steps is None:
+            self._save_strategy = 'epoch'
+            self._save_steps = 0
+        else:
+            self._save_strategy = 'steps'
+            self._save_steps = save_steps
+        self._continue_train = continue_train
 
     def _load_model(self):
         raise NotImplementedError('You need to implement this method')
@@ -83,8 +93,10 @@ class BaseEstimator:
             weight_decay=0.01,
             logging_steps=1000,
             lr_scheduler_type='constant',
-            evaluation_strategy='no',
-            save_strategy='no',
+            evaluation_strategy='steps',
+            eval_steps=1,
+            save_strategy=self._save_strategy,
+            save_steps=self._save_steps,
             output_dir='./tmp'
         )
         trainer = Trainer(
@@ -95,9 +107,9 @@ class BaseEstimator:
             compute_metrics=self.metric_fn
         )
         logger.info('Starting training')
-        trainer.train()
+        trainer.train(resume_from_checkpoint=self._continue_train)
         logger.info('Finished training')
-
+        trainer.save_state()
         self._save_model(trainer, model_out_dir)
 
     def predict(self, dataset_dir, out_dir, id_col='doc_id'):

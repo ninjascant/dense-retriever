@@ -110,9 +110,9 @@ class BertDotModel(nn.Module):
         mean_pool = torch.mean(last_hidden_state, 1)
         return mean_pool
 
-    def forward(self, doc_input_ids, query_input_ids, doc_attention_mask, query_attention_mask, labels):
+    def forward(self, context_input_ids, query_input_ids, context_attention_mask, query_attention_mask, labels):
         query_embed = self.get_embed(query_input_ids, query_attention_mask)
-        doc_embed = self.get_embed(doc_input_ids, doc_attention_mask)
+        doc_embed = self.get_embed(context_input_ids, context_attention_mask)
 
         logits = torch.bmm(
             doc_embed.unsqueeze(1),
