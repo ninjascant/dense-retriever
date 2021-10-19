@@ -1,13 +1,11 @@
-import itertools
 from typing import Any, List
-from tqdm.auto import tqdm
 from loguru import logger
 import numpy as np
 import pandas as pd
 from transformers import BertTokenizerFast
 from datasets import load_dataset, Dataset
 from .base import BaseTransform
-from ..data_model import QuerySample, TrainSampleData, IRTrainSample, IRTrainSampleWithoutDoc
+from ..data_model import QuerySample, IRTrainSample, IRTrainSampleWithoutDoc
 from ..utils.redis_utils import RedisClient
 from ..utils.file_utils import read_pickle_file, write_pickle_file, write_jsonl_file
 
@@ -114,6 +112,13 @@ class TrainSetConstructor(BaseTransform):
         self._query_sample_file = query_sample_file
         self._train_docs_file = train_docs_file
 
+    @staticmethod
+    def _get_ann_hard_negative_for_query(row):
+        ann_search_res = [ctx_id for ctx_id in row['search_results'] if ctx_id != row['positive_doc_id']]
+        hard_negative_id = np.random.choice(ann_search_res)
+        row['hard_negative_id'] = hard_negative_id
+        return row
+
     def _load_input_data(self, input_path: str):
         search_results = read_pickle_file(input_path)
         query_samples = read_pickle_file(self._query_sample_file)
@@ -125,21 +130,47 @@ class TrainSetConstructor(BaseTransform):
     def _transform_fn(self, input_data: pd.DataFrame):
         if self._train_docs_file is not None:
             docs = pd.read_json(self._train_docs_file, lines=True)
-            docs = docs.set_index('doc_id')
         else:
             docs = None
+        logger.info('Loaded docs')
 
-        train_samples_raw = [
-            TrainSampleData(
-                similar_doc_ids=row['search_results'],
-                positive_doc_id=row['positive_doc_id'],
-                query=row['query'], query_id=row['query_id']
-            ) for i, row in input_data.iterrows()]
+        queries_with_neg = input_data.apply(self._get_ann_hard_negative_for_query, axis=1)
 
-        top_n = len(train_samples_raw[0].similar_doc_ids)
-        train_samples = [construct_ir_sample(raw_sample, docs, top_n=top_n)
-                         for raw_sample in tqdm(train_samples_raw)]
-        train_samples = [sample.__dict__ for sample in itertools.chain.from_iterable(train_samples)]
+        if docs is not None:
+            queries_with_ctx = queries_with_neg.merge(docs[['doc_id', 'text']], left_on='hard_negative_id',
+                                                      right_on='doc_id',
+                                                      how='inner')
+            queries_with_ctx = queries_with_ctx.rename(columns={'text': 'neg_ctx'})
+            queries_with_ctx = queries_with_ctx.drop(['doc_id'], axis=1)
+
+            queries_with_ctx = queries_with_ctx.merge(docs[['doc_id', 'text']], left_on='positive_doc_id',
+                                                      right_on='doc_id',
+                                                      how='inner').sample(frac=1).reset_index(drop=True)
+            queries_with_ctx = queries_with_ctx.rename(columns={'text': 'pos_ctx'})
+            queries_with_ctx = queries_with_ctx.drop(
+                ['doc_id', 'hard_negative_id', 'positive_doc_id', 'query_id', 'search_results'], axis=1)
+            pos_sample_df = queries_with_ctx[['query', 'pos_ctx']]
+            pos_sample_df['label'] = 1
+            pos_sample_df = pos_sample_df.rename(columns={'pos_ctx': 'context'})
+            pos_samples = pos_sample_df.to_dict(orient='records')
+
+            neg_sample_df = queries_with_ctx[['query', 'neg_ctx']]
+            neg_sample_df = neg_sample_df.rename(columns={'neg_ctx': 'context'})
+            neg_sample_df['label'] = 0
+            neg_samples = neg_sample_df.to_dict(orient='records')
+
+            train_samples = pos_samples + neg_samples
+        else:
+            pos_sample_df = queries_with_neg[['query', 'positive_doc_id']]
+            pos_sample_df['label'] = 1
+            pos_sample_df = pos_sample_df.rename(columns={'positive_doc_id': 'doc_id'})
+            pos_samples = pos_sample_df.to_dict(orient='records')
+
+            neg_sample_df = queries_with_neg[['query', 'hard_negative_id']]
+            neg_sample_df['label'] = 0
+            neg_sample_df = neg_sample_df.rename(columns={'hard_negative_id': 'doc_id'})
+            neg_samples = neg_sample_df.to_dict(orient='records')
+            train_samples = pos_samples + neg_samples
         return train_samples
 
     def _save_transformed_data(self, transformed_data: List[dict], out_path: str):
@@ -174,7 +205,8 @@ class TrainSetTokenizer(BaseTransform):
         if not self._use_cache:
             logger.info('Tokenizing dataset')
             encoded_dataset = _encode_text_column(input_data, self.tokenizer, 'query', self.max_length, self.padding)
-            encoded_dataset = _encode_text_column(encoded_dataset, self.tokenizer, 'doc', self.max_length, self.padding)
+            encoded_dataset = _encode_text_column(encoded_dataset, self.tokenizer, 'context', self.max_length,
+                                                  self.padding)
         else:
             encoded_dataset = _encode_text_column(input_data, self.tokenizer, 'query', 100, 'max_length')
             encoded_dataset = _set_encoding_from_cache(encoded_dataset, 'doc', True)
@@ -191,4 +223,38 @@ class TrainSetTokenizer(BaseTransform):
         pass
 
     def _fit_transformer_fn(self, input_data: Any):
+        pass
+
+
+class TestSetTokenizer(BaseTransform):
+    def __init__(self, tokenizer_name_or_path: str, max_length: int = 512, padding: str = 'max_length',
+                 text_column: str = 'context'):
+        super(TestSetTokenizer, self).__init__(transformer_out_path=None)
+
+        self.max_length = max_length
+        self.padding = padding
+
+        self._text_column = text_column
+
+        self.tokenizer = BertTokenizerFast.from_pretrained(tokenizer_name_or_path)
+
+    def _load_input_data(self, input_path: str):
+        dataset = load_dataset('json', data_files={'test': input_path})
+        return dataset
+
+    def _save_transformed_data(self, transformed_data: Dataset, out_path: str):
+        transformed_data.save_to_disk(out_path)
+
+    def _transform_fn(self, input_data: Any):
+        encoded_dataset = _encode_text_column(input_data, self.tokenizer, self._text_column, self.max_length,
+                                              self.padding, rename_cols=False)
+        return encoded_dataset
+
+    def _fit_transformer_fn(self, input_data: Any):
+        pass
+
+    def _load_transformer(self, input_path: str):
+        pass
+
+    def _save_transformer(self, out_path: str):
         pass

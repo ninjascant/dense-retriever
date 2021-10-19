@@ -3,7 +3,7 @@ from loguru import logger
 import numpy as np
 from datasets import load_metric
 from .transforms.ann_index import ANNIndex
-from .transforms.preprocessing import TrainSetConstructor, TrainSetTokenizer
+from .transforms.preprocessing import TrainSetConstructor, TrainSetTokenizer, TestSetTokenizer
 from .estimators.bert_dot import BertDot
 from .utils.file_utils import zip_dir
 from .utils.gcs_utils import upload_file_to_gcs
@@ -25,6 +25,12 @@ def compute_metrics(eval_pred):
 def tokenize_train_set(train_set_path, tokenizer_name_or_path, use_cache, out_path):
     transformer = TrainSetTokenizer(tokenizer_name_or_path, max_length=512, padding='max_length', use_cache=use_cache)
     transformer.transform(train_set_path, out_path)
+
+
+def tokenize_test_set(test_set_path, tokenizer_name_or_path, out_path, text_col_name):
+    transformer = TestSetTokenizer(tokenizer_name_or_path, max_length=512, padding='max_length',
+                                   text_column=text_col_name)
+    transformer.transform(test_set_path, out_path)
 
 
 def construct_train_set(search_result_file, query_sample_file, train_docs_file, out_path):
