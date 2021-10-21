@@ -5,7 +5,7 @@ import numpy as np
 from transformers import Trainer
 from datasets import load_from_disk
 from .base import BaseEstimator
-from ..models import BertDotModel
+from ..models.bert_dot import BertDotModel
 
 
 class BertDot(BaseEstimator):
@@ -19,7 +19,8 @@ class BertDot(BaseEstimator):
             lr: float = 3e-5,
             metric_fn=None,
             continue_train=False,
-            save_steps=None
+            save_steps=None,
+            in_batch_neg=False
     ):
         super(BertDot, self).__init__(
             model_name_or_path=model_name_or_path,
@@ -32,8 +33,10 @@ class BertDot(BaseEstimator):
             continue_train=continue_train,
             metric_fn=metric_fn)
 
+        self.in_batch_neg = in_batch_neg
+
     def _load_model(self):
-        model = BertDotModel(self.model_name_or_path)
+        model = BertDotModel(self.model_name_or_path, in_batch_neg=self.in_batch_neg)
         return model
 
     def _save_model(self, trainer: Trainer, model_out_dir: str):

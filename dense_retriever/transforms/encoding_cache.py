@@ -18,7 +18,7 @@ class EncodingCacheBuilder(BaseTransform):
     def _transform_fn(self, input_data: Any):
         input_data.map(lambda row:
                        self.client.write(
-                           row['doc_id'],
+                           row['id'],
                            {'input_ids': row['input_ids'], 'attention_mask': row['attention_mask']}
                        ))
 

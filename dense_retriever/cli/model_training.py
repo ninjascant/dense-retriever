@@ -1,5 +1,24 @@
 import click
-from ..pipeline_steps import train_model_with_refresh
+from ..pipeline_steps.training import train_model, train_model_with_refresh
+
+
+@click.command()
+@click.argument('model_name_or_path', type=str)
+@click.argument('init_train_set_dir', type=str)
+@click.argument('model_out_dir', type=str)
+@click.argument('refresh_steps', type=int)
+@click.argument('-s', '--total-steps', type=int, default=-1)
+@click.argument('-e', '--num-epochs', type=int, default=1)
+@click.option('-t', '--top-n', type=int, default=50)
+def train_model_command(model_name_or_path, train_set_path, model_out_dir, total_steps, num_epochs, top_n):
+    train_model(
+        model_name=model_name_or_path,
+        dataset_path=train_set_path,
+        out_dir=model_out_dir,
+        train_steps=total_steps,
+        num_epochs=num_epochs,
+        accum_steps=4
+    )
 
 
 @click.command()
@@ -27,6 +46,5 @@ def train_model_with_refresh_command(model_name_or_path, init_train_set_dir, doc
         batch_size=8,
         accum_steps=3,
         top_n=top_n,
-        device='cuda',
         num_epochs=num_epochs
     )

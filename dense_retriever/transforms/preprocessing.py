@@ -5,9 +5,9 @@ import pandas as pd
 from transformers import BertTokenizerFast
 from datasets import load_dataset, Dataset
 from .base import BaseTransform
-from ..data_model import QuerySample, IRTrainSample, IRTrainSampleWithoutDoc
+from ..data_model import QuerySample
 from ..utils.redis_utils import RedisClient
-from ..utils.file_utils import read_pickle_file, write_pickle_file, write_jsonl_file
+from ..utils.file_utils import read_pickle_file, write_pickle_file, write_jsonl_file, read_jsonl_file
 
 
 def _rename_torch_columns(dataset, column_name):
@@ -45,28 +45,6 @@ def _set_encoding_from_cache(dataset, column_name, rename_cols=True):
 
 def truncate_text(text, max_words):
     return ' '.join(text.split()[:max_words])
-
-
-def construct_ir_sample(sample_data, docs=None, top_n=100, max_words=550):
-    hard_negative_idx = np.random.randint(low=-1, high=top_n-1)
-    hard_negative_id = sample_data.similar_doc_ids[hard_negative_idx]
-
-    if docs is not None:
-        hard_negative_doc = docs.loc[hard_negative_id]['text']
-        positive_doc = docs.loc[sample_data.positive_doc_id]['text']
-
-        if max_words:
-            hard_negative_doc = truncate_text(hard_negative_doc, max_words)
-            positive_doc = truncate_text(positive_doc, max_words)
-
-        positive_sample = IRTrainSample(query=sample_data.query, doc=positive_doc, label=1)
-        negative_sample = IRTrainSample(query=sample_data.query, doc=hard_negative_doc, label=0)
-
-    else:
-        positive_sample = IRTrainSampleWithoutDoc(query=sample_data.query, doc_id=sample_data.positive_doc_id, label=1)
-        negative_sample = IRTrainSampleWithoutDoc(query=sample_data.query, doc_id=hard_negative_id, label=0)
-
-    return positive_sample, negative_sample
 
 
 class QuerySampleConstructor(BaseTransform):
@@ -257,4 +235,29 @@ class TestSetTokenizer(BaseTransform):
         pass
 
     def _save_transformer(self, out_path: str):
+        pass
+
+
+class TextExtractor(BaseTransform):
+    def __init__(self, text_col_name, id_col_name):
+        super(TextExtractor, self).__init__(transformer_out_path=None)
+        self._text_col_name = text_col_name
+        self._id_col_name = id_col_name
+
+    def _load_input_data(self, input_path: str):
+        return read_jsonl_file(input_path)
+
+    def _save_transformed_data(self, transformed_data: Any, out_path: str):
+        return write_jsonl_file(transformed_data, out_path)
+
+    def _transform_fn(self, input_data: Any):
+        return [{'id': row[self._id_col_name], 'text': row[self._text_col_name]} for row in input_data]
+
+    def _save_transformer(self, out_path: str):
+        pass
+
+    def _load_transformer(self, input_path: str):
+        pass
+
+    def _fit_transformer_fn(self, input_data: Any):
         pass

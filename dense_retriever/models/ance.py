@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import RobertaForSequenceClassification, AutoModel, PreTrainedModel, BertModel, BertPreTrainedModel
-from transformers.modeling_outputs import SequenceClassifierOutput
+from transformers import RobertaForSequenceClassification
+
 
 
 class EmbeddingMixin:
@@ -94,51 +94,3 @@ class RobertaDot_NLL_LN(NLL, RobertaForSequenceClassification):
 
     def body_emb(self, input_ids, attention_mask):
         return self.query_emb(input_ids, attention_mask)
-
-
-class BertDotModel(nn.Module):
-    def __init__(self, model_name):
-        super(BertDotModel, self).__init__()
-
-        self.transformer = AutoModel.from_pretrained(model_name)
-        self.dropout = nn.Dropout(0.8)
-
-    def get_embed(self, input_ids, attention_mask):
-        outputs = self.transformer(input_ids, attention_mask=attention_mask)
-
-        last_hidden_state = outputs[0]
-        mean_pool = torch.mean(last_hidden_state, 1)
-        return mean_pool
-
-    def forward(self, context_input_ids, query_input_ids, context_attention_mask, query_attention_mask, labels):
-        query_embed = self.get_embed(query_input_ids, query_attention_mask)
-        doc_embed = self.get_embed(context_input_ids, context_attention_mask)
-
-        logits = torch.bmm(
-            doc_embed.unsqueeze(1),
-            query_embed.unsqueeze(2)).squeeze(-1).squeeze(-1)
-
-        if labels is not None:
-            loss_fn = nn.BCEWithLogitsLoss()
-            labels = labels.float()
-            loss = loss_fn(logits, labels)
-            return SequenceClassifierOutput(logits=logits, loss=loss)
-        else:
-            return SequenceClassifierOutput(logits=logits)
-
-models = {
-    'ance': RobertaDot_NLL_LN,
-    'tinybert': BertDotModel
-}
-
-
-def load_model(model_name, model_path):
-    if model_name == 'ance':
-        model = RobertaDot_NLL_LN.from_pretrained(
-            model_path
-        )
-    elif model_name == 'bert-dot':
-        model = BertDotModel(model_path)
-    else:
-        raise NotImplementedError
-    return model

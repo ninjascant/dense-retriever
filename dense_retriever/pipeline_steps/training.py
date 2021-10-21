@@ -2,11 +2,12 @@ import datetime
 from loguru import logger
 import numpy as np
 from datasets import load_metric
-from .transforms.ann_index import ANNIndex
-from .transforms.preprocessing import TrainSetConstructor, TrainSetTokenizer, TestSetTokenizer
-from .estimators.bert_dot import BertDot
-from .utils.file_utils import zip_dir
-from .utils.gcs_utils import upload_file_to_gcs
+from ..estimators.bert_dot import BertDot
+from .inference import run_inference
+from .ann_search import run_search_from_scratch
+from .preprocessing import tokenize_train_set, construct_train_set
+from ..utils.file_utils import zip_dir
+from ..utils.gcs_utils import upload_file_to_gcs
 
 
 def softmax(x):
@@ -22,41 +23,6 @@ def compute_metrics(eval_pred):
     return metric.compute(predictions=predictions, references=labels)
 
 
-def tokenize_train_set(train_set_path, tokenizer_name_or_path, use_cache, out_path):
-    transformer = TrainSetTokenizer(tokenizer_name_or_path, max_length=512, padding='max_length', use_cache=use_cache)
-    transformer.transform(train_set_path, out_path)
-
-
-def tokenize_test_set(test_set_path, tokenizer_name_or_path, out_path, text_col_name):
-    transformer = TestSetTokenizer(tokenizer_name_or_path, max_length=512, padding='max_length',
-                                   text_column=text_col_name)
-    transformer.transform(test_set_path, out_path)
-
-
-def construct_train_set(search_result_file, query_sample_file, train_docs_file, out_path):
-    transformer = TrainSetConstructor(query_sample_file=query_sample_file, train_docs_file=train_docs_file)
-    transformer.transform(search_result_file, out_path)
-
-
-def run_search_from_scratch(
-        context_embedding_dir,
-        query_embedding_dir,
-        out_path,
-        embedding_size,
-        top_n,
-        load_from_sub_dirs,
-        index_out_path
-):
-    transformer = ANNIndex(
-        transformer_out_path=index_out_path,
-        embedding_size=embedding_size,
-        top_n=top_n,
-        load_from_sub_dirs=load_from_sub_dirs
-    )
-    transformer.fit(context_embedding_dir)
-    transformer.transform(query_embedding_dir, out_path)
-
-
 def train_model(model_name, dataset_path, out_dir, batch_size, accum_steps, train_steps=-1, num_epochs=3,
                 save_to_gcs=False, log_out_file=None, continue_train=False, save_steps=None):
     if log_out_file is not None:
@@ -69,26 +35,14 @@ def train_model(model_name, dataset_path, out_dir, batch_size, accum_steps, trai
         accum_steps=accum_steps,
         continue_train=continue_train,
         metric_fn=compute_metrics,
-        save_steps=save_steps
+        save_steps=save_steps,
+        in_batch_neg=True
     )
     estimator.fit(dataset_dir=dataset_path, model_out_dir=out_dir)
 
     if save_to_gcs:
         zip_dir(out_dir, f'{out_dir}.tar.gz')
         upload_file_to_gcs('finetuned-models', f'{out_dir}.tar.gz', f'{out_dir}.tar.gz')
-
-
-def run_inference(model_name_or_path, dataset_dir, out_dir, id_col='doc_id'):
-    estimator = BertDot(
-        model_name_or_path=model_name_or_path,
-        train_steps=0,
-        num_epochs=0,
-        batch_size=32,
-        accum_steps=0,
-        lr=0,
-        metric_fn=compute_metrics
-    )
-    estimator.predict(dataset_dir=dataset_dir, out_dir=out_dir, id_col=id_col)
 
 
 def train_model_with_refresh(
@@ -103,7 +57,6 @@ def train_model_with_refresh(
     batch_size,
     accum_steps,
     top_n,
-    device,
     num_epochs
 ):
     refresh_iterations = int(total_steps / refresh_steps) + 1
@@ -139,3 +92,4 @@ def train_model_with_refresh(
             train_model(model_out_prev_epoch, 'model_outputs/dataset_refreshed', model_out_dir,
                         batch_size, accum_steps, log_out_file=f'model-out-{i}.log', save_to_gcs=True,
                         train_steps=refresh_steps, save_steps=refresh_steps, continue_train=True)
+
