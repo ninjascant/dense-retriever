@@ -1,5 +1,5 @@
 import click
-from ..pipeline_steps import run_inference
+from ..pipeline_steps.inference import run_inference
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))

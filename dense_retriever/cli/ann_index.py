@@ -1,6 +1,6 @@
 import click
 from ..transforms.ann_index import ANNIndex, SearchEvaluator
-from ..pipeline_steps import run_search_from_scratch
+from ..pipeline_steps.ann_search import run_search_from_scratch
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
