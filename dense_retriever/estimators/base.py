@@ -38,7 +38,8 @@ class BaseEstimator:
             device=None,
             eval_batch_size=None,
             save_steps=None,
-            continue_train=False
+            continue_train=False,
+            in_batch_neg=False
     ):
         self.model_name_or_path = model_name_or_path
         self.train_steps = train_steps
@@ -47,8 +48,10 @@ class BaseEstimator:
         self.accum_steps = accum_steps
         self.lr = lr
 
-        self.model = self._load_model()
+        self.in_batch_neg = in_batch_neg
         self.metric_fn = metric_fn
+
+        self.model = self._load_model()
 
         if device is None:
             self.device = 'cuda' if torch.cuda.is_available() else 'cpu'

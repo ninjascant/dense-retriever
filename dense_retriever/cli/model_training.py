@@ -4,11 +4,10 @@ from ..pipeline_steps.training import train_model, train_model_with_refresh
 
 @click.command()
 @click.argument('model_name_or_path', type=str)
-@click.argument('init_train_set_dir', type=str)
+@click.argument('train_set_path', type=str)
 @click.argument('model_out_dir', type=str)
-@click.argument('refresh_steps', type=int)
-@click.argument('-t', '--total-steps', type=int, default=-1)
-@click.argument('-e', '--num-epochs', type=int, default=1)
+@click.option('-t', '--total-steps', type=int, default=-1)
+@click.option('-e', '--num-epochs', type=int, default=1)
 @click.option('-b', '--batch-size', type=int, default=8)
 def train_model_command(model_name_or_path, train_set_path, model_out_dir, total_steps, num_epochs, batch_size):
     train_model(

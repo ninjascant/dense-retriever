@@ -4,7 +4,7 @@ from .ann_index import run_search_prebuilt_index_command, run_search_from_scratc
 from .preprocessing import construct_query_samples_command, build_encoding_cache_command, construct_train_set_command, \
     tokenize_train_set_command, tokenize_test_set_command, extract_texts_for_inference_command
 from .inference import run_inference_command
-from .model_training import train_model_with_refresh_command
+from .model_training import train_model_command, train_model_with_refresh_command
 
 
 @click.group()
@@ -23,3 +23,4 @@ run.add_command(construct_train_set_command, 'construct_train_set')
 run.add_command(tokenize_train_set_command, 'tokenize_train_set')
 run.add_command(tokenize_test_set_command, 'tokenize_test_set')
 run.add_command(extract_texts_for_inference_command, 'extract_texts_for_inference')
+run.add_command(train_model_command, 'train_model')

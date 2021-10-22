@@ -31,9 +31,10 @@ class BertDot(BaseEstimator):
             save_steps=save_steps,
             lr=lr,
             continue_train=continue_train,
-            metric_fn=metric_fn)
-
-        self.in_batch_neg = in_batch_neg
+            metric_fn=metric_fn,
+            in_batch_neg=in_batch_neg
+        )
+        print(self.in_batch_neg)
 
     def _load_model(self):
         model = BertDotModel(self.model_name_or_path, in_batch_neg=self.in_batch_neg)

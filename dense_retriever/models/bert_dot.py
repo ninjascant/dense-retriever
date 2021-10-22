@@ -27,7 +27,8 @@ class BertDotModel(nn.Module):
             logits = torch.mm(query_embed, doc_embed.T)
             logits = torch.flatten(logits)
             if labels is not None:
-                new_labels = np.zeros(logits.shape)
+                new_labels = np.zeros(logits.size)
+                print(logits.size())
                 np.fill_diagonal(new_labels, labels)
                 new_labels = torch.flatten(torch.tensor(new_labels)).float()
 
