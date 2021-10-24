@@ -52,16 +52,6 @@ class BertDotBCEModel(nn.Module):
                 return SequenceClassifierOutput(logits=logits)
 
 
-class PairWiseRankingLoss(nn.Module):
-    def __init__(self, margin=0.5):
-        super().__init__()
-        self.margin = margin
-
-    def forward(self, distance, label):
-        loss = label * distance + (1 - label) * torch.clamp(self.margin - distance, min=0)
-        return loss.mean()
-
-
 class BertDotPairwiseRankingModel(nn.Module):
     def __init__(self, model_name, in_batch_neg=False):
         super(BertDotPairwiseRankingModel, self).__init__()
@@ -79,15 +69,16 @@ class BertDotPairwiseRankingModel(nn.Module):
 
     def forward(self, context_input_ids, query_input_ids, context_attention_mask, query_attention_mask, labels):
         query_embed = self.get_embed(query_input_ids, query_attention_mask)
-        doc_embed = self.get_embed(context_input_ids, context_attention_mask)
+        ctx_embed = self.get_embed(context_input_ids, context_attention_mask)
 
         distance = torch.bmm(
-            doc_embed.unsqueeze(1),
+            ctx_embed.unsqueeze(1),
             query_embed.unsqueeze(2)).squeeze(-1).squeeze(-1)
 
         if labels is not None:
-            loss_fn = PairWiseRankingLoss(margin=0.5)
-            loss = loss_fn(distance, labels)
+            labels = torch.where(labels != 0, labels, -1)
+            loss_fn = nn.CosineEmbeddingLoss(margin=0.5)
+            loss = loss_fn(query_embed, ctx_embed, labels)
             return SequenceClassifierOutput(logits=distance, loss=loss)
         else:
             return SequenceClassifierOutput(logits=distance)
