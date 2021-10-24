@@ -94,10 +94,10 @@ class BaseEstimator:
             learning_rate=self.lr,
             warmup_steps=500,
             weight_decay=0.01,
-            logging_steps=1000,
+            logging_steps=500,
             lr_scheduler_type='constant',
             evaluation_strategy='steps',
-            eval_steps=1,
+            eval_steps=5000,
             save_strategy=self._save_strategy,
             save_steps=self._save_steps,
             output_dir='./tmp'
