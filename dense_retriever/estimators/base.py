@@ -5,6 +5,12 @@ import numpy as np
 import torch
 from transformers import TrainingArguments, Trainer
 from datasets import load_metric
+from ..models.bert_dot import BertDotBCEModel, BertDotPairwiseRankingModel
+
+MODEL_TYPES = {
+    'bert-dot-bce': BertDotBCEModel,
+    'bert-dot-pairwise-ranking': BertDotPairwiseRankingModel
+}
 
 
 def extract_ids(dataset, id_column):
@@ -29,6 +35,7 @@ class BaseEstimator:
     def __init__(
             self,
             model_name_or_path: str,
+            model_type: str,
             train_steps: int,
             num_epochs: int,
             batch_size: int,
@@ -42,6 +49,7 @@ class BaseEstimator:
             in_batch_neg=False
     ):
         self.model_name_or_path = model_name_or_path
+        self.model_class = MODEL_TYPES[model_type]
         self.train_steps = train_steps
         self.num_epochs = num_epochs
         self.batch_size = batch_size

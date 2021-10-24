@@ -5,13 +5,6 @@ import numpy as np
 from transformers import Trainer
 from datasets import load_from_disk
 from .base import BaseEstimator
-from ..models.bert_dot import BertDotBCEModel, BertDotPairwiseRankingModel
-
-
-MODEL_TYPES = {
-    'bert-dot-bce': BertDotBCEModel,
-    'bert-dot-pairwise-ranking': BertDotPairwiseRankingModel
-}
 
 
 class BertDot(BaseEstimator):
@@ -31,6 +24,7 @@ class BertDot(BaseEstimator):
     ):
         super(BertDot, self).__init__(
             model_name_or_path=model_name_or_path,
+            model_type=model_type,
             train_steps=train_steps,
             num_epochs=num_epochs,
             batch_size=batch_size,
@@ -41,7 +35,6 @@ class BertDot(BaseEstimator):
             metric_fn=metric_fn,
             in_batch_neg=in_batch_neg
         )
-        self.model_class = MODEL_TYPES[model_type]
 
     def _load_model(self):
         model = self.model_class(self.model_name_or_path, in_batch_neg=self.in_batch_neg)

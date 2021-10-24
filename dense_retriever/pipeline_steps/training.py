@@ -24,7 +24,7 @@ def compute_metrics(eval_pred):
 
 
 def train_model(model_name, model_type, dataset_path, out_dir, batch_size, accum_steps, train_steps=-1, num_epochs=3,
-                save_to_gcs=False, log_out_file=None, continue_train=False, save_steps=None):
+                save_to_gcs=False, log_out_file=None, continue_train=False, save_steps=None, in_batch_neg=False):
     if log_out_file is not None:
         logger.add(log_out_file)
     estimator = BertDot(
@@ -37,7 +37,7 @@ def train_model(model_name, model_type, dataset_path, out_dir, batch_size, accum
         continue_train=continue_train,
         metric_fn=compute_metrics,
         save_steps=save_steps,
-        in_batch_neg=True
+        in_batch_neg=in_batch_neg
     )
     estimator.fit(dataset_dir=dataset_path, model_out_dir=out_dir)
 
