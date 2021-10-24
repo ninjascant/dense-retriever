@@ -58,7 +58,7 @@ class PairWiseRankingLoss(nn.Module):
         self.margin = margin
 
     def forward(self, distance, label):
-        loss = label * distance + (1 - label) * max(0, self.margin - distance)
+        loss = label * distance + (1 - label) * torch.clamp(self.margin - distance, min=0)
         return loss.mean()
 
 
