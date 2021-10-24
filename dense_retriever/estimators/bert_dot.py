@@ -1,26 +1,33 @@
 import os
 import json
-from typing import Union
+from typing import Union, Callable
 import numpy as np
 from transformers import Trainer
 from datasets import load_from_disk
 from .base import BaseEstimator
-from ..models.bert_dot import BertDotModel
+from ..models.bert_dot import BertDotBCEModel, BertDotPairwiseRankingModel
+
+
+MODEL_TYPES = {
+    'bert-dot-bce': BertDotBCEModel,
+    'bert-dot-pairwise-ranking': BertDotPairwiseRankingModel
+}
 
 
 class BertDot(BaseEstimator):
     def __init__(
             self,
             model_name_or_path: str,
+            model_type: str,
             train_steps: int,
             num_epochs: int,
             batch_size: int,
             accum_steps: int,
             lr: float = 3e-5,
-            metric_fn=None,
-            continue_train=False,
-            save_steps=None,
-            in_batch_neg=False
+            metric_fn: Callable = None,
+            continue_train: bool = False,
+            save_steps: int = None,
+            in_batch_neg: bool = False,
     ):
         super(BertDot, self).__init__(
             model_name_or_path=model_name_or_path,
@@ -34,10 +41,10 @@ class BertDot(BaseEstimator):
             metric_fn=metric_fn,
             in_batch_neg=in_batch_neg
         )
-        print(self.in_batch_neg)
+        self.model_class = MODEL_TYPES[model_type]
 
     def _load_model(self):
-        model = BertDotModel(self.model_name_or_path, in_batch_neg=self.in_batch_neg)
+        model = self.model_class(self.model_name_or_path, in_batch_neg=self.in_batch_neg)
         return model
 
     def _save_model(self, trainer: Trainer, model_out_dir: str):

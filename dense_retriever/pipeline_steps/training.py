@@ -23,12 +23,13 @@ def compute_metrics(eval_pred):
     return metric.compute(predictions=predictions, references=labels)
 
 
-def train_model(model_name, dataset_path, out_dir, batch_size, accum_steps, train_steps=-1, num_epochs=3,
+def train_model(model_name, model_type, dataset_path, out_dir, batch_size, accum_steps, train_steps=-1, num_epochs=3,
                 save_to_gcs=False, log_out_file=None, continue_train=False, save_steps=None):
     if log_out_file is not None:
         logger.add(log_out_file)
     estimator = BertDot(
         model_name_or_path=model_name,
+        model_type=model_type,
         train_steps=train_steps,
         num_epochs=num_epochs,
         batch_size=batch_size,
