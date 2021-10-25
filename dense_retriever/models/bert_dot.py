@@ -84,41 +84,6 @@ class BertDotPairwiseRankingModel(nn.Module):
             return SequenceClassifierOutput(logits=distance)
 
 
-class BertDotTripletRankingModel(nn.Module):
-    def __init__(self, model_name, in_batch_neg=False):
-        super(BertDotTripletRankingModel, self).__init__()
-
-        self.transformer = AutoModel.from_pretrained(model_name)
-        if in_batch_neg:
-            raise NotImplementedError('In-batch negative training not implemented yet for BertDotPairwiseRankingModel')
-
-    @staticmethod
-    def _dot_product_distance_fn(input1: torch.Tensor, input2: torch.Tensor) -> torch.Tensor:
-        return torch.bmm(
-            input1.unsqueeze(1),
-            input2.unsqueeze(2)).squeeze(-1).squeeze(-1)
-
-    def get_embed(self, input_ids, attention_mask):
-        outputs = self.transformer(input_ids, attention_mask=attention_mask)
-
-        last_hidden_state = outputs[0]
-        mean_pool = torch.mean(last_hidden_state, 1)
-        return mean_pool
-
-    def forward(self, context_input_ids, query_input_ids, context_attention_mask, query_attention_mask, labels):
-        query_embed = self.get_embed(query_input_ids, query_attention_mask)
-        ctx_embed = self.get_embed(context_input_ids, context_attention_mask)
-
-        if labels is not None:
-            loss_fn = nn.TripletMarginWithDistanceLoss(distance_function=self._dot_product_distance_fn)
-            positive_idx = (labels != 0).nonzero()
-            neg_idx = (labels == 0).nonzero()
-
-            return SequenceClassifierOutput(logits=distance, loss=loss)
-        else:
-            return SequenceClassifierOutput(logits=distance)
-
-
 class BertEmbedModel(nn.Module):
     def __init__(self, model_name_or_path):
         super().__init__()

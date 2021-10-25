@@ -14,7 +14,11 @@ class RedisClient:
         )
 
     def read(self, key):
-        return json.loads(self.r.get(key))
+        value = self.r.get(key)
+        if value is not None:
+            return json.loads(value)
+        else:
+            return
 
     def write(self, key, value):
         value_str = json.dumps(value)
