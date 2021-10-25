@@ -2,22 +2,27 @@ import click
 from ..pipeline_steps.training import train_model, train_model_with_refresh
 
 
-@click.command()
+@click.command(context_settings=dict(help_option_names=['-h', '--help']))
 @click.argument('model_name_or_path', type=str)
+@click.argument('model_type', type=str)
 @click.argument('train_set_path', type=str)
 @click.argument('model_out_dir', type=str)
 @click.option('-t', '--total-steps', type=int, default=-1)
 @click.option('-e', '--num-epochs', type=int, default=1)
 @click.option('-b', '--batch-size', type=int, default=8)
-def train_model_command(model_name_or_path, train_set_path, model_out_dir, total_steps, num_epochs, batch_size):
+@click.option('-i', '--in-batch-neg', type=bool, default=False)
+def train_model_command(model_name_or_path, model_type, train_set_path, model_out_dir, total_steps, num_epochs,
+                        batch_size, in_batch_neg):
     train_model(
         model_name=model_name_or_path,
+        model_type=model_type,
         dataset_path=train_set_path,
         out_dir=model_out_dir,
         train_steps=total_steps,
         num_epochs=num_epochs,
         accum_steps=4,
-        batch_size=batch_size
+        batch_size=batch_size,
+        in_batch_neg=in_batch_neg
     )
 
 

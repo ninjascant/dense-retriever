@@ -1,9 +1,10 @@
 from ..estimators.bert_dot import BertDot
 
 
-def run_inference(model_name_or_path, dataset_dir, out_dir, id_col='doc_id'):
+def run_inference(model_name_or_path, model_type, dataset_dir, out_dir, id_col='doc_id'):
     estimator = BertDot(
         model_name_or_path=model_name_or_path,
+        model_type=model_type,
         train_steps=0,
         num_epochs=0,
         batch_size=32,

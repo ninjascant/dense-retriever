@@ -5,6 +5,12 @@ import numpy as np
 import torch
 from transformers import TrainingArguments, Trainer
 from datasets import load_metric
+from ..models.bert_dot import BertDotBCEModel, BertDotPairwiseRankingModel, BertEmbedModel
+
+MODEL_TYPES = {
+    'bert-dot-bce': BertDotBCEModel,
+    'bert-dot-pairwise-ranking': BertDotPairwiseRankingModel
+}
 
 
 def extract_ids(dataset, id_column):
@@ -25,10 +31,20 @@ def compute_f1(eval_pred):
     return metric.compute(predictions=predictions, references=labels)
 
 
+class IRTrainer(Trainer):
+    @staticmethod
+    def prediction_step(model, inputs, prediction_loss_only, ignore_keys):
+        with torch.no_grad():
+            output = model(inputs['input_ids'].to('cuda'), inputs['attention_mask'].to('cuda'))
+            logits = output[1].detach().cpu().numpy()
+        return None, logits, None
+
+
 class BaseEstimator:
     def __init__(
             self,
             model_name_or_path: str,
+            model_type: str,
             train_steps: int,
             num_epochs: int,
             batch_size: int,
@@ -42,6 +58,7 @@ class BaseEstimator:
             in_batch_neg=False
     ):
         self.model_name_or_path = model_name_or_path
+        self.model_class = MODEL_TYPES[model_type]
         self.train_steps = train_steps
         self.num_epochs = num_epochs
         self.batch_size = batch_size
@@ -94,10 +111,10 @@ class BaseEstimator:
             learning_rate=self.lr,
             warmup_steps=500,
             weight_decay=0.01,
-            logging_steps=1000,
+            logging_steps=500,
             lr_scheduler_type='constant',
             evaluation_strategy='steps',
-            eval_steps=1,
+            eval_steps=5000,
             save_strategy=self._save_strategy,
             save_steps=self._save_steps,
             output_dir='./tmp'
@@ -117,26 +134,13 @@ class BaseEstimator:
 
     def predict(self, dataset_dir, out_dir, id_col='doc_id'):
         logger.info('Loading data')
+
         dataset = self._load_dataset(dataset_dir, torch_columns=['input_ids', 'attention_mask'])
-        dataloader = torch.utils.data.DataLoader(dataset['test'], self._eval_batch_size, shuffle=False)
-        batch_iterator = tqdm(enumerate(dataloader), total=len(dataloader))
-        ids = extract_ids(dataset, id_col)
-
-        self.model.to(self.device)
-        self.model.eval()
-        total_embeddings = []
-        logger.info('Starting inference')
-        with torch.no_grad():
-            for i, batch in batch_iterator:
-                embeddings = self.model.get_embed(
-                    batch['input_ids'].to(self.device),
-                    batch['attention_mask'].to(self.device)
-                )
-                embeddings = embeddings.detach().cpu().numpy()
-                total_embeddings.append(embeddings)
-        total_embeddings = np.vstack(total_embeddings)
-        logger.info('Finished inference')
-
-        self._save_inference_results((total_embeddings, ids), out_dir)
-
-        return total_embeddings
+        model = BertEmbedModel(self.model_name_or_path)
+        trainer = IRTrainer(
+            model=model,
+        )
+        predictions = trainer.predict(test_dataset=dataset['test'])
+        predictions = predictions.predictions
+        ids = dataset['test'][id_col]
+        self._save_inference_results((predictions, ids), out_dir)
