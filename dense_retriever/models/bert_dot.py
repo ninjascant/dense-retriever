@@ -99,7 +99,7 @@ class BertDotPairwiseRankingModel(nn.Module):
 
 
 class BertClsModel(nn.Module):
-    def __init__(self, model_name_or_path):
+    def __init__(self, model_name_or_path, **kwargs):
         super(BertClsModel, self).__init__()
 
         self.transformer = AutoModel.from_pretrained(model_name_or_path)
