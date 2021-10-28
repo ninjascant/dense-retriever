@@ -5,11 +5,12 @@ import numpy as np
 import torch
 from transformers import TrainingArguments, Trainer
 from datasets import load_metric
-from ..models.bert_dot import BertDotBCEModel, BertDotPairwiseRankingModel, BertEmbedModel
+from ..models.bert_dot import BertDotBCEModel, BertDotPairwiseRankingModel, BertEmbedModel, BertClsModel
 
 MODEL_TYPES = {
     'bert-dot-bce': BertDotBCEModel,
-    'bert-dot-pairwise-ranking': BertDotPairwiseRankingModel
+    'bert-dot-pairwise-ranking': BertDotPairwiseRankingModel,
+    'bert-linear-cls': BertClsModel
 }
 
 

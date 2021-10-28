@@ -5,6 +5,20 @@ from transformers import AutoModel
 from transformers.modeling_outputs import SequenceClassifierOutput
 
 
+class BertEmbedModel(nn.Module):
+    def __init__(self, model_name_or_path):
+        super().__init__()
+        self.transformer = AutoModel.from_pretrained(model_name_or_path)
+
+    def forward(self, input_ids, attention_mask):
+        outputs = self.transformer(input_ids, attention_mask=attention_mask)
+
+        last_hidden_state = outputs[0]
+        mean_pool = torch.mean(last_hidden_state, 1)
+
+        return torch.tensor(0), mean_pool
+
+
 class BertDotBCEModel(nn.Module):
     def __init__(self, model_name, in_batch_neg=False):
         super(BertDotBCEModel, self).__init__()
@@ -84,15 +98,33 @@ class BertDotPairwiseRankingModel(nn.Module):
             return SequenceClassifierOutput(logits=distance)
 
 
-class BertEmbedModel(nn.Module):
+class BertClsModel(nn.Module):
     def __init__(self, model_name_or_path):
-        super().__init__()
+        super(BertClsModel, self).__init__()
+
         self.transformer = AutoModel.from_pretrained(model_name_or_path)
 
-    def forward(self, input_ids, attention_mask):
+        self.linear = nn.Linear(312 * 2, 312)
+
+    def get_embed(self, input_ids, attention_mask):
         outputs = self.transformer(input_ids, attention_mask=attention_mask)
 
         last_hidden_state = outputs[0]
         mean_pool = torch.mean(last_hidden_state, 1)
+        return mean_pool
 
-        return torch.tensor(0), mean_pool
+    def forward(self, context_input_ids, query_input_ids, context_attention_mask, query_attention_mask, labels):
+        query_embed = self.get_embed(query_input_ids, query_attention_mask)
+        ctx_embed = self.get_embed(context_input_ids, context_attention_mask)
+
+        embed_cat = torch.cat((query_embed, ctx_embed), dim=1)
+
+        logits = self.linear(embed_cat)
+
+        if labels is not None:
+            loss_fn = nn.BCEWithLogitsLoss()
+            labels = labels.float()
+            loss = loss_fn(logits, labels)
+            return SequenceClassifierOutput(logits=logits, loss=loss)
+        else:
+            return SequenceClassifierOutput(logits=logits)
