@@ -9,6 +9,11 @@ from .base import BaseTransform
 from ..data_model import ANNSearchRes
 from ..utils.file_utils import load_json_file, read_pickle_file, write_pickle_file
 
+NAME_TO_METRIC = {
+    'dot-product': faiss.METRIC_INNER_PRODUCT,
+    'cosine': faiss.METRIC_L2
+}
+
 
 def _convert_ids_to_int(ids):
     is_str = type(ids[0]) is str
@@ -26,7 +31,8 @@ class ANNIndex(BaseTransform):
             self, 
             transformer_out_path: Union[str, None], 
             embedding_size: int, top_n: int, 
-            load_from_sub_dirs: bool = False
+            load_from_sub_dirs: bool = False,
+            metric_type=None
     ):
         """
         Transformer that performs standard ANN index operations: load context and query embeddings, 
@@ -42,6 +48,11 @@ class ANNIndex(BaseTransform):
         self.embedding_size = embedding_size
         self.top_n = top_n
         self.load_from_sub_dirs = load_from_sub_dirs
+
+        if metric_type is None:
+            self.metric_type = faiss.METRIC_INNER_PRODUCT
+        else:
+            self.metric_type = NAME_TO_METRIC[metric_type]
 
     @staticmethod
     def _load_embeddings_from_sub_dirs(input_dir):
@@ -85,7 +96,7 @@ class ANNIndex(BaseTransform):
         return embeddings, ids
 
     def _fit_transformer_fn(self, input_data):
-        index = faiss.index_factory(self.embedding_size, 'IDMap,Flat', faiss.METRIC_INNER_PRODUCT)
+        index = faiss.index_factory(self.embedding_size, 'IDMap,Flat', self.metric_type)
         embeddings, ids = input_data
         index.add_with_ids(embeddings, ids)
         return index

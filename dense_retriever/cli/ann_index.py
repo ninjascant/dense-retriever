@@ -11,6 +11,7 @@ from ..pipeline_steps.ann_search import run_search_from_scratch
 @click.argument('top_n', type=int)
 @click.option('-s', '--load-from-sub-dirs', type=bool, default=False)
 @click.option('-i', '--index-out-path', type=str, default=None)
+@click.option('-m', '--metric-type', type=str, default='cosine')
 def run_search_from_scratch_command(
         context_embedding_dir,
         query_embedding_dir,
@@ -18,10 +19,11 @@ def run_search_from_scratch_command(
         embedding_size,
         top_n,
         load_from_sub_dirs,
-        index_out_path
+        index_out_path,
+        metric_type
 ):
     run_search_from_scratch(context_embedding_dir, query_embedding_dir, out_path, embedding_size, top_n,
-                            load_from_sub_dirs, index_out_path)
+                            load_from_sub_dirs, index_out_path, metric_type=metric_type)
 
 
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
