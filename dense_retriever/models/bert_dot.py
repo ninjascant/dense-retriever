@@ -1,8 +1,24 @@
+from typing import Callable
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from transformers import AutoModel
 from transformers.modeling_outputs import SequenceClassifierOutput
+
+
+class BertEmbedModel(nn.Module):
+    def __init__(self, model_name_or_path):
+        super().__init__()
+        self.transformer = AutoModel.from_pretrained(model_name_or_path)
+
+    def forward(self, input_ids, attention_mask):
+        outputs = self.transformer(input_ids, attention_mask=attention_mask)
+
+        last_hidden_state = outputs[0]
+        mean_pool = torch.mean(last_hidden_state, 1)
+
+        return torch.tensor(0), mean_pool
 
 
 class BertDotBCEModel(nn.Module):
@@ -84,15 +100,34 @@ class BertDotPairwiseRankingModel(nn.Module):
             return SequenceClassifierOutput(logits=distance)
 
 
-class BertEmbedModel(nn.Module):
-    def __init__(self, model_name_or_path):
-        super().__init__()
-        self.transformer = AutoModel.from_pretrained(model_name_or_path)
+class BertDotTripletRankingModel(nn.Module):
+    def __init__(self, model_name: str, in_batch_neg: bool = False):
+        super(BertDotTripletRankingModel, self).__init__()
 
-    def forward(self, input_ids, attention_mask):
+        self.transformer = AutoModel.from_pretrained(model_name)
+        if in_batch_neg:
+            raise NotImplementedError('In-batch negative training not implemented yet')
+
+    def get_embed(self, input_ids: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
         outputs = self.transformer(input_ids, attention_mask=attention_mask)
 
         last_hidden_state = outputs[0]
         mean_pool = torch.mean(last_hidden_state, 1)
+        return mean_pool
 
-        return torch.tensor(0), mean_pool
+    def forward(
+            self,
+            query_input_ids: torch.Tensor,
+            pos_context_input_ids: torch.Tensor,
+            neg_context_input_ids: torch.Tensor,
+            query_attention_mask: torch.Tensor,
+            pos_context_attention_mask: torch.Tensor,
+            neg_context_attention_mask: torch.Tensor
+    ) -> torch.Tensor:
+        query_embed = self.get_embed(query_input_ids, query_attention_mask)
+        pos_ctx_embed = self.get_embed(pos_context_input_ids, pos_context_attention_mask)
+        neg_ctx_embed = self.get_embed(neg_context_input_ids, neg_context_attention_mask)
+
+        loss_fn = nn.TripletMarginLoss(margin=1)
+        loss = loss_fn(query_embed, pos_ctx_embed, neg_ctx_embed)
+        return loss
