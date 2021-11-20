@@ -85,7 +85,7 @@ class ANNIndex(BaseTransform):
         return embeddings, ids
 
     def _fit_transformer_fn(self, input_data):
-        index = faiss.index_factory(self.embedding_size, 'IDMap,Flat', faiss.METRIC_INNER_PRODUCT)
+        index = faiss.index_factory(self.embedding_size, 'IDMap,Flat', faiss.METRIC_L2)
         embeddings, ids = input_data
         index.add_with_ids(embeddings, ids)
         return index
